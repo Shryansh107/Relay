@@ -1,0 +1,109 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Run {
+  id          String    @id @default(cuid())
+  seedDomain  String    @map("seed_domain")
+  status      String
+  stage       String
+  summaryJson String?   @map("summary_json")
+  startedAt   DateTime  @default(now()) @map("started_at")
+  endedAt     DateTime? @map("ended_at")
+
+  companies        Company[]
+  contacts         Contact[]
+  outreachMessages OutreachMessage[]
+  providerLogs     ProviderLog[]
+
+  @@map("runs")
+}
+
+model Company {
+  id               String  @id @default(cuid())
+  runId            String  @map("run_id")
+  domain           String
+  name             String?
+  source           String
+  firmographicJson String? @map("firmographic_json")
+
+  run      Run       @relation(fields: [runId], references: [id], onDelete: Cascade)
+  contacts Contact[]
+
+  @@unique([runId, domain])
+  @@map("companies")
+}
+
+model Contact {
+  id          String  @id @default(cuid())
+  runId       String  @map("run_id")
+  companyId   String  @map("company_id")
+  fullName    String  @map("full_name")
+  title       String?
+  linkedinUrl String  @map("linkedin_url")
+  seniority   String?
+
+  run              Run               @relation(fields: [runId], references: [id], onDelete: Cascade)
+  company          Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  emails           Email[]
+  outreachMessages OutreachMessage[]
+
+  @@unique([runId, linkedinUrl])
+  @@map("contacts")
+}
+
+model Email {
+  id                 String  @id @default(cuid())
+  contactId          String  @map("contact_id")
+  email              String  @unique
+  verificationStatus String  @map("verification_status")
+  provider           String
+  confidence         Float?
+  providerJson       String? @map("provider_json")
+
+  contact          Contact           @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  outreachMessages OutreachMessage[]
+
+  @@map("emails")
+}
+
+model OutreachMessage {
+  id                String    @id @default(cuid())
+  runId             String    @map("run_id")
+  contactId         String    @map("contact_id")
+  emailId           String    @map("email_id")
+  subject           String
+  bodyHash          String    @map("body_hash")
+  sendStatus        String    @map("send_status")
+  providerMessageId String?   @map("provider_message_id")
+  sentAt            DateTime? @map("sent_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  run     Run     @relation(fields: [runId], references: [id], onDelete: Cascade)
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  email   Email   @relation(fields: [emailId], references: [id], onDelete: Cascade)
+
+  @@index([contactId])
+  @@index([emailId])
+  @@map("outreach_messages")
+}
+
+model ProviderLog {
+  id              String   @id @default(cuid())
+  runId           String   @map("run_id")
+  provider        String
+  stage           String
+  requestSummary  String?  @map("request_summary")
+  responseSummary String?  @map("response_summary")
+  statusCode      Int?     @map("status_code")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  run Run @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@map("provider_logs")
+}
