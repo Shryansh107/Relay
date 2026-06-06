@@ -1,32 +1,10 @@
 import "dotenv/config";
 import { z } from "zod";
-import {
-  DATABASE_URL,
-  OCEAN_IO_BASE_URL,
-  OCEAN_IO_SEARCH_PATH,
-  PROSPEO_BASE_URL,
-  EAZYREACH_BASE_URL,
-  EAZYREACH_ENRICH_PATH,
-  EAZYREACH_AUTH_HEADER,
-  EAZYREACH_LINKEDIN_FIELD,
-  EAZYREACH_EMAIL_PATH,
-  EAZYREACH_STATUS_PATH,
-  EAZYREACH_CONFIDENCE_PATH,
-  BREVO_BASE_URL,
-  BREVO_SENDER_NAME,
-  MAX_SENDS_PER_RUN,
-  MAX_CONTACTS_PER_COMPANY,
-  RECONTACT_COOLDOWN_DAYS,
-  DEFAULT_DRY_RUN,
-  HTTP_TIMEOUT_MS,
-  HTTP_RETRIES
-} from "../constants/index.js";
 
-const booleanFromString = (fallback: string) =>
-  z
-    .string()
-    .default(fallback)
-    .transform((value) => value.toLowerCase() === "true");
+const booleanFromString = z
+  .string()
+  .default("true")
+  .transform((value) => value.toLowerCase() === "true");
 
 const intFromString = (fallback: string) =>
   z
@@ -42,30 +20,30 @@ const intFromString = (fallback: string) =>
     });
 
 export const envSchema = z.object({
-  DATABASE_URL: z.string().default(DATABASE_URL),
+  DATABASE_URL: z.string().default("file:./data/outreach.db"),
   OCEAN_IO_API_KEY: z.string().min(1),
-  OCEAN_IO_BASE_URL: z.string().url().default(OCEAN_IO_BASE_URL),
-  OCEAN_IO_SEARCH_PATH: z.string().default(OCEAN_IO_SEARCH_PATH),
+  OCEAN_IO_BASE_URL: z.string().url().default("https://api.ocean.io"),
+  OCEAN_IO_SEARCH_PATH: z.string().default("/v3/search/companies/preview"),
   PROSPEO_API_KEY: z.string().min(1),
-  PROSPEO_BASE_URL: z.string().url().default(PROSPEO_BASE_URL),
+  PROSPEO_BASE_URL: z.string().url().default("https://api.prospeo.io"),
   EAZYREACH_API_KEY: z.string().min(1),
-  EAZYREACH_BASE_URL: z.string().url().default(EAZYREACH_BASE_URL),
-  EAZYREACH_ENRICH_PATH: z.string().default(EAZYREACH_ENRICH_PATH),
-  EAZYREACH_AUTH_HEADER: z.string().default(EAZYREACH_AUTH_HEADER),
-  EAZYREACH_LINKEDIN_FIELD: z.string().default(EAZYREACH_LINKEDIN_FIELD),
-  EAZYREACH_EMAIL_PATH: z.string().default(EAZYREACH_EMAIL_PATH),
-  EAZYREACH_STATUS_PATH: z.string().default(EAZYREACH_STATUS_PATH),
-  EAZYREACH_CONFIDENCE_PATH: z.string().default(EAZYREACH_CONFIDENCE_PATH),
+  EAZYREACH_BASE_URL: z.string().url(),
+  EAZYREACH_ENRICH_PATH: z.string(),
+  EAZYREACH_AUTH_HEADER: z.string().default("X-API-KEY"),
+  EAZYREACH_LINKEDIN_FIELD: z.string().default("linkedinUrl"),
+  EAZYREACH_EMAIL_PATH: z.string().default("data.email"),
+  EAZYREACH_STATUS_PATH: z.string().default("data.verification_status"),
+  EAZYREACH_CONFIDENCE_PATH: z.string().default("data.confidence"),
   BREVO_API_KEY: z.string().min(1),
-  BREVO_BASE_URL: z.string().url().default(BREVO_BASE_URL),
+  BREVO_BASE_URL: z.string().url().default("https://api.brevo.com"),
   BREVO_SENDER_EMAIL: z.string().email(),
-  BREVO_SENDER_NAME: z.string().min(1).default(BREVO_SENDER_NAME),
-  MAX_SENDS_PER_RUN: intFromString(MAX_SENDS_PER_RUN),
-  MAX_CONTACTS_PER_COMPANY: intFromString(MAX_CONTACTS_PER_COMPANY),
-  RECONTACT_COOLDOWN_DAYS: intFromString(RECONTACT_COOLDOWN_DAYS),
-  DEFAULT_DRY_RUN: booleanFromString(DEFAULT_DRY_RUN),
-  HTTP_TIMEOUT_MS: intFromString(HTTP_TIMEOUT_MS),
-  HTTP_RETRIES: intFromString(HTTP_RETRIES)
+  BREVO_SENDER_NAME: z.string().min(1).default("Outreach Team"),
+  MAX_SENDS_PER_RUN: intFromString("5"),
+  MAX_CONTACTS_PER_COMPANY: intFromString("3"),
+  RECONTACT_COOLDOWN_DAYS: intFromString("30"),
+  DEFAULT_DRY_RUN: booleanFromString,
+  HTTP_TIMEOUT_MS: intFromString("20000"),
+  HTTP_RETRIES: intFromString("3")
 });
 
 export type AppConfig = z.infer<typeof envSchema>;
@@ -78,4 +56,3 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
   }
   return parsed.data;
 }
-
