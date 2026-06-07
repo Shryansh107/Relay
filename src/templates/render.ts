@@ -1,21 +1,28 @@
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import Handlebars from "handlebars";
 import type { AppConfig } from "../config/env.js";
 import type { RenderedEmail } from "../domain/types.js";
-import { firstName } from "../utils/normalize.js";
+import { firstName, lastName } from "../utils/normalize.js";
 
-const subjectTemplate = Handlebars.compile("Quick idea for {{companyName}}");
-const bodyTemplate = Handlebars.compile(`Hi {{firstName}},
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-I noticed {{companyName}} while researching companies similar to {{seedDomain}}. Given your work as {{title}}, I thought this might be relevant.
+let subjectPath = path.join(__dirname, "subject.hbs");
+let bodyPath = path.join(__dirname, "body.hbs");
 
-We help teams turn target-account research into verified, personalized outbound without manual handoffs.
+if (!fs.existsSync(subjectPath)) {
+  // If running from dist/src/templates/render.js, fall back to the source template directory
+  subjectPath = path.join(__dirname, "../../../src/templates/subject.hbs");
+  bodyPath = path.join(__dirname, "../../../src/templates/body.hbs");
+}
 
-Open to a quick conversation next week?
+const subjectSource = fs.readFileSync(subjectPath, "utf-8");
+const bodySource = fs.readFileSync(bodyPath, "utf-8");
 
-Best,
-{{senderName}}
-
-If this is not relevant, reply and I will not follow up.`);
+const subjectTemplate = Handlebars.compile(subjectSource);
+const bodyTemplate = Handlebars.compile(bodySource);
 
 export function renderEmail(input: {
   seedDomain: string;
@@ -29,6 +36,7 @@ export function renderEmail(input: {
 }): RenderedEmail {
   const view = {
     firstName: firstName(input.contact.fullName),
+    lastName: lastName(input.contact.fullName),
     title: input.contact.title ?? "a leader",
     companyName: input.contact.company.name ?? input.contact.company.domain,
     companyDomain: input.contact.company.domain,
