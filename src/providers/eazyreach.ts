@@ -4,8 +4,52 @@ import { fetchJson } from "../utils/http.js";
 import { normalizeEmail } from "../utils/normalize.js";
 import type { EmailVerificationClient } from "./types.js";
 
+interface AuthTokenResponse {
+  affectedRows?: number;
+  authToken: string;
+  id?: string;
+}
+
+interface EmailObject {
+  email: string;
+  verification: string;
+  source?: string;
+}
+
+interface EnrichResponse {
+  status: string;
+  emails?: EmailObject[];
+}
+
 export class EazyreachClient implements EmailVerificationClient {
+  private authToken: string | null = null;
+
   constructor(private readonly config: AppConfig) {}
+
+  private async getAuthToken(): Promise<string> {
+    if (this.authToken) {
+      return this.authToken;
+    }
+
+    const url = new URL("/b2b/createAuthToken/", this.config.EAZYREACH_BASE_URL);
+    const response = await fetchJson<AuthTokenResponse>(url.toString(), {
+      method: "POST",
+      body: {
+        clientId: this.config.EAZYREACH_CLIENT_ID,
+        clientSecret: this.config.EAZYREACH_CLIENT_SECRET
+      },
+      timeoutMs: this.config.HTTP_TIMEOUT_MS,
+      retries: this.config.HTTP_RETRIES
+    });
+
+    const token = response.data?.authToken;
+    if (!token) {
+      throw new Error(`Eazyreach authentication failed: ${JSON.stringify(response.data)}`);
+    }
+
+    this.authToken = token;
+    return this.authToken;
+  }
 
   async verify(contact: {
     id: string;
@@ -14,45 +58,38 @@ export class EazyreachClient implements EmailVerificationClient {
     linkedinUrl: string;
     company: { domain: string; name: string | null };
   }): Promise<VerifiedEmail | null> {
-    const url = new URL(this.config.EAZYREACH_ENRICH_PATH, this.config.EAZYREACH_BASE_URL);
-    const body: Record<string, unknown> = {
-      [this.config.EAZYREACH_LINKEDIN_FIELD]: contact.linkedinUrl,
-      fullName: contact.fullName,
-      title: contact.title,
-      companyDomain: contact.company.domain,
-      companyName: contact.company.name
-    };
+    const token = await this.getAuthToken();
+    const url = new URL("/b2b/linkedin-emails", this.config.EAZYREACH_BASE_URL);
 
-    const response = await fetchJson<Record<string, unknown>>(url.toString(), {
+    const response = await fetchJson<EnrichResponse>(url.toString(), {
       method: "POST",
-      headers: { [this.config.EAZYREACH_AUTH_HEADER]: this.config.EAZYREACH_API_KEY },
-      body,
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      body: {
+        linkedinUrl: contact.linkedinUrl
+      },
       timeoutMs: this.config.HTTP_TIMEOUT_MS,
       retries: this.config.HTTP_RETRIES
     });
 
-    const email = normalizeEmail(String(getPath(response.data, this.config.EAZYREACH_EMAIL_PATH) ?? ""));
+    const emails = response.data?.emails;
+    if (!Array.isArray(emails) || emails.length === 0) {
+      return null;
+    }
+
+    // Get the first email address in the response
+    const matched = emails[0];
+    const email = normalizeEmail(matched?.email ?? "");
     if (!email) return null;
-    const status = String(getPath(response.data, this.config.EAZYREACH_STATUS_PATH) ?? "verified").toLowerCase();
-    const confidenceRaw = getPath(response.data, this.config.EAZYREACH_CONFIDENCE_PATH);
-    const confidence = typeof confidenceRaw === "number" ? confidenceRaw : undefined;
 
     return {
       contactId: contact.id,
       email,
-      verificationStatus: status,
+      verificationStatus: matched?.verification ?? "verified",
       provider: "eazyreach",
-      confidence,
-      providerJson: response.data
+      providerJson: response.data as unknown as Record<string, unknown>
     };
   }
-}
-
-function getPath(source: unknown, path: string): unknown {
-  return path.split(".").reduce<unknown>((current, part) => {
-    if (current && typeof current === "object" && part in current) {
-      return (current as Record<string, unknown>)[part];
-    }
-    return undefined;
-  }, source);
 }

@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { AppConfig } from "../config/env.js";
 import type { DiscoveredCompany } from "../domain/types.js";
 import { fetchJson } from "../utils/http.js";
-import { normalizeDomain } from "../utils/normalize.js";
+import { normalizeDomain, asString } from "../utils/normalize.js";
 import type { CompanyDiscoveryClient } from "./types.js";
 
 const oceanCompanySchema = z.object({
@@ -56,8 +56,4 @@ export class OceanIoClient implements CompanyDiscoveryClient {
       })
       .filter((company): company is DiscoveredCompany => company !== null);
   }
-}
-
-function asString(value: unknown): string | undefined {
-  return typeof value === "string" && value.trim() ? value : undefined;
 }

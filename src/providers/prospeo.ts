@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { AppConfig } from "../config/env.js";
 import type { DiscoveredContact } from "../domain/types.js";
 import { fetchJson } from "../utils/http.js";
-import { normalizeLinkedInUrl } from "../utils/normalize.js";
+import { normalizeLinkedInUrl, asString } from "../utils/normalize.js";
 import type { ContactDiscoveryClient } from "./types.js";
 
 const prospeoResponseSchema = z.object({
@@ -17,7 +17,7 @@ const prospeoResponseSchema = z.object({
     .default([])
 });
 
-const targetSeniorities = ["Founder/Owner", "C-Suite", "VP", "Director", "Head"];
+const targetSeniorities = ["Founder/Owner", "C-Suite", "Vice President", "Director", "Head"];
 
 export class ProspeoClient implements ContactDiscoveryClient {
   constructor(private readonly config: AppConfig) {}
@@ -59,8 +59,4 @@ export class ProspeoClient implements ContactDiscoveryClient {
       .slice(0, this.config.MAX_CONTACTS_PER_COMPANY)
       .filter((contact): contact is DiscoveredContact => contact !== null);
   }
-}
-
-function asString(value: unknown): string | undefined {
-  return typeof value === "string" && value.trim() ? value : undefined;
 }

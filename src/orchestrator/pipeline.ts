@@ -89,10 +89,28 @@ export class OutreachPipeline {
         }
       }
 
+      this.logger.info(
+        {
+          companiesFound: summary.companiesFound,
+          contactsFound: summary.contactsFound,
+          failures: summary.failures
+        },
+        "Prospeo contact discovery stage complete"
+      );
+
       await this.repos.updateRun(run.id, { stage: "eazyreach" });
       const contacts = await this.repos.listRunContacts(run.id);
-      for (const contact of contacts) {
+      const targetContacts = contacts.slice(0, 5);
+
+      let processedCount = 0;
+      for (const contact of targetContacts) {
         try {
+          if (processedCount > 0) {
+            this.logger.info("Applying rate limit: pausing 12 seconds before next Eazyreach request...");
+            await new Promise((resolve) => setTimeout(resolve, 12000));
+          }
+          processedCount++;
+
           const verified = await this.eazyreach.verify(contact);
           if (!verified) {
             this.logger.info({ contact: contact.fullName }, "Eazyreach found no verified email");
@@ -113,6 +131,16 @@ export class OutreachPipeline {
           this.logger.warn({ err: error, contact: contact.linkedinUrl }, "Eazyreach lookup failed; continuing");
         }
       }
+
+      this.logger.info(
+        {
+          companiesFound: summary.companiesFound,
+          contactsFound: summary.contactsFound,
+          emailsVerified: summary.emailsVerified,
+          failures: summary.failures
+        },
+        "Eazyreach email verification stage complete"
+      );
 
       await this.repos.updateRun(run.id, { stage: "safety_gate" });
       const emailRecords = await this.repos.listEligibleEmails(run.id);
