@@ -16,16 +16,29 @@ program
 program
   .command("run")
   .argument("<company.domain>", "seed company domain")
-  .description("Run the full outreach pipeline with one seed domain")
+  .option("--skip-ocean", "skip Ocean.io company discovery")
+  .option("--skip-prospeo", "skip Prospeo contact discovery")
+  .option("--skip-eazyreach", "skip Eazyreach email verification")
+  .option("--skip-safety", "skip Safety Gate evaluation")
+  .option("--skip-brevo", "skip Brevo email dispatch")
+  .option("--show-inputs", "show input details passed between stages", false)
+  .description("Run the outreach pipeline with one seed domain")
   .allowExcessArguments(false)
-  .action(async (domain: string) => {
+  .action(async (domain: string, options: {
+    skipOcean?: boolean;
+    skipProspeo?: boolean;
+    skipEazyreach?: boolean;
+    skipSafety?: boolean;
+    skipBrevo?: boolean;
+    showInputs?: boolean;
+  }) => {
     const logger = createLogger();
     let prisma: ReturnType<typeof createPrismaClient> | undefined;
     try {
       const config = loadConfig();
       prisma = createPrismaClient(config.DATABASE_URL);
       const pipeline = new OutreachPipeline(prisma, config, logger);
-      const result = await pipeline.run(domain);
+      const result = await pipeline.run(domain, options);
 
       logger.info(
         {
