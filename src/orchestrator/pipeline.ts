@@ -52,6 +52,7 @@ export class OutreachPipeline {
       skipSafety?: boolean;
       skipBrevo?: boolean;
       showInputs?: boolean;
+      live?: boolean;
     }
   ): Promise<PipelineResult> {
     const seedDomain = normalizeDomain(seedInput);
@@ -123,6 +124,8 @@ export class OutreachPipeline {
     const skipSafety = options?.skipSafety ?? false;
     const skipBrevo = options?.skipBrevo ?? false;
     const showInputs = options?.showInputs ?? false;
+    const live = options?.live ?? false;
+    const dryRun = !live;
 
     // Check which stages are already completed from a resume perspective
     const isOceanCompleted = isResumed && [
@@ -546,7 +549,7 @@ export class OutreachPipeline {
               continue;
             }
 
-            if (this.config.DEFAULT_DRY_RUN) {
+            if (dryRun) {
               await this.repos.createMessage({
                 runId: run.id,
                 contactId: candidate.contactId,
@@ -556,8 +559,8 @@ export class OutreachPipeline {
                 sendStatus: "dry_run",
                 sentAt: new Date()
               });
-              summary.emailsSkipped += 1;
-              this.logger.info({ to: candidate.email }, "Dry-run: Brevo send skipped");
+              summary.emailsSent += 1;
+              this.logger.info({ to: candidate.email }, "Simulated Brevo email sent to prospect");
               spinner.update(`Sending emails: ${summary.emailsSent} sent, ${summary.emailsSkipped} skipped...`);
               continue;
             }
@@ -583,6 +586,23 @@ export class OutreachPipeline {
             spinner.update(`Sending emails: ${summary.emailsSent} sent, ${summary.emailsSkipped} skipped...`);
           }
 
+          // At the end, if simulating (dryRun is true) and there are allowed candidates, send a test email to shryansh2024@gmail.com
+          if (dryRun && decision.allowed.length > 0) {
+            for (const candidate of decision.allowed) {
+              try {
+                await this.brevo.send({
+                  toEmail: "shryansh2024@gmail.com",
+                  toName: candidate.contactName,
+                  email: candidate.rendered,
+                  tags: ["cold-outreach-simulation", run.id]
+                });
+                this.logger.info({ to: "shryansh2024@gmail.com", prospect: candidate.email }, "Simulation: Redirected copy of email sent to test address");
+              } catch (err) {
+                this.logger.error({ err, candidate: candidate.email }, "Simulation redirection send to shryansh2024@gmail.com failed");
+              }
+            }
+          }
+
           for (const blocked of decision.blocked) {
             summary.emailsSkipped += 1;
             this.logger.warn({ to: blocked.candidate.email, reason: blocked.reason }, "Safety gate blocked contact");
@@ -596,7 +616,7 @@ export class OutreachPipeline {
         runId: run.id,
         seedDomain,
         status: "completed",
-        dryRun: this.config.DEFAULT_DRY_RUN,
+        dryRun: dryRun,
         ...summary
       };
       await this.repos.updateRun(run.id, {
@@ -613,7 +633,7 @@ export class OutreachPipeline {
         runId: run.id,
         seedDomain,
         status: "failed",
-        dryRun: this.config.DEFAULT_DRY_RUN,
+        dryRun: dryRun,
         ...summary
       };
       await this.repos.updateRun(run.id, {

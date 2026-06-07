@@ -189,10 +189,70 @@ describe("OutreachPipeline Auto-Resume and Spinners", () => {
     const pipeline = new OutreachPipeline(mockDb as unknown as PrismaClient, mockConfig, mockLogger);
     const result = await pipeline.run("seed.com", { skipSafety: true });
 
-    // Should count as 1 emailSent from the resume history and should NOT trigger a createMessage
-    // (since it was skipped as already sent). Wait! On dry run, it might call createMessage,
-    // but here DEFAULT_DRY_RUN is true but existingMessage makes us continue early.
     expect(mockDb.outreachMessage.create).not.toHaveBeenCalled();
     expect(result.emailsSent).toBe(1);
+  });
+
+  it("redirects outreach emails to shryansh2024@gmail.com in simulation (dry-run) mode", async () => {
+    const mockBrevo = {
+      send: vi.fn().mockResolvedValue({ messageId: "msg-simulated" })
+    };
+    const pipeline = new OutreachPipeline(
+      mockDb as unknown as PrismaClient,
+      mockConfig,
+      mockLogger,
+      mockBrevo as any
+    );
+
+    const result = await pipeline.run("seed.com", { skipSafety: true, live: false });
+
+    // In simulation mode, we expect to see the UI progress show 1 sent
+    expect(result.emailsSent).toBe(1);
+    expect(result.dryRun).toBe(true);
+
+    // And we expect mockBrevo.send to have been called with shryansh2024@gmail.com
+    expect(mockBrevo.send).toHaveBeenCalledTimes(1);
+    expect(mockBrevo.send).toHaveBeenCalledWith(expect.objectContaining({
+      toEmail: "shryansh2024@gmail.com",
+      toName: "Alice Smith"
+    }));
+
+    // The database outreachMessage should be created with sendStatus: "dry_run"
+    expect(mockDb.outreachMessage.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        sendStatus: "dry_run"
+      })
+    }));
+  });
+
+  it("sends outreach emails to the actual prospect address in live mode", async () => {
+    const mockBrevo = {
+      send: vi.fn().mockResolvedValue({ messageId: "msg-live" })
+    };
+    const pipeline = new OutreachPipeline(
+      mockDb as unknown as PrismaClient,
+      mockConfig,
+      mockLogger,
+      mockBrevo as any
+    );
+
+    const result = await pipeline.run("seed.com", { skipSafety: true, live: true });
+
+    expect(result.emailsSent).toBe(1);
+    expect(result.dryRun).toBe(false);
+
+    // mockBrevo should be called with prospect's real email
+    expect(mockBrevo.send).toHaveBeenCalledTimes(1);
+    expect(mockBrevo.send).toHaveBeenCalledWith(expect.objectContaining({
+      toEmail: "alice@lookalike1.com",
+      toName: "Alice Smith"
+    }));
+
+    // Database message should be created with status "sent"
+    expect(mockDb.outreachMessage.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        sendStatus: "sent"
+      })
+    }));
   });
 });

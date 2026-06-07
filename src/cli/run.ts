@@ -8,8 +8,8 @@ import { createLogger } from "../utils/logger.js";
 const program = new Command();
 
 program
-  .name("outreach")
-  .description("Automated cold-outreach pipeline")
+  .name("relay")
+  .description("Relay: Automated cold-outreach pipeline")
   .showHelpAfterError()
   .allowExcessArguments(false);
 
@@ -22,6 +22,7 @@ program
   .option("--skip-safety", "skip Safety Gate evaluation")
   .option("--skip-brevo", "skip Brevo email dispatch")
   .option("--show-inputs", "show input details passed between stages", false)
+  .option("--live", "send real outreach emails instead of simulating", false)
   .description("Run the outreach pipeline with one seed domain")
   .allowExcessArguments(false)
   .action(async (domain: string, options: {
@@ -31,7 +32,18 @@ program
     skipSafety?: boolean;
     skipBrevo?: boolean;
     showInputs?: boolean;
+    live?: boolean;
   }) => {
+    if (process.stdout.isTTY) {
+      console.log(`\x1b[36m\x1b[1m
+  ____  _____ _        _ __   __
+ |  _ \\\\| ____| |      / \\\\ \\ / /
+ | |_) |  _| | |     / _ \\\\ V / 
+ |  _ <| |___| |___ / ___ \\\\| |  
+ |_| \\\\_\\\\_____|_____/_/   \\_\\|_| 
+               R   E   L   A   Y
+\x1b[0m`);
+    }
     const logger = createLogger();
     if (process.stdout.isTTY) {
       logger.level = "warn";

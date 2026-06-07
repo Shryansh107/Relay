@@ -1,14 +1,14 @@
 {
-  "name": "automated-outreach-pipeline",
+  "name": "relay",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "bin": {
-    "outreach": "./dist/src/cli/run.js"
+    "relay": "./dist/src/cli/run.js"
   },
   "scripts": {
     "dev": "tsx src/cli/run.ts",
-    "outreach": "tsx src/cli/run.ts",
+    "relay": "tsx src/cli/run.ts",
     "test-brevo": "tsx src/cli/test-brevo.ts",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",

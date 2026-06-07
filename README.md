@@ -1,10 +1,10 @@
-# Outreach Assistant
+# Relay
 
 An automated, end-to-end cold-outreach command-line pipeline that takes a single seed `company.domain` input and runs a multi-stage outreach campaign autonomously.
 
 ## Project Description
 
-This is an automated cold-outreach assistant that automates the process of finding lookalike companies, identifying key decision-makers, resolving contact details, validating safety and cooldown rules, and dispatching personalized outbound emails:
+This is Relay, an automated cold-outreach assistant that automates the process of finding lookalike companies, identifying key decision-makers, resolving contact details, validating safety and cooldown rules, and dispatching personalized outbound emails:
 
 ```mermaid
 flowchart LR
@@ -65,7 +65,7 @@ flowchart LR
 ### Primary Command
 To run the full outreach pipeline with all stages active:
 ```bash
-npm run outreach -- run <company.domain>
+npm run relay -- run <company.domain>
 ```
 
 ### CLI Flags (Options)
@@ -82,5 +82,5 @@ Modify pipeline behavior by passing the following flags after the `--` separator
 
 *Example:* Run the pipeline for `stripe.com`, skipping the company/contact lookup APIs by fetching them from the local cache database, and verifying emails:
 ```bash
-npm run outreach -- run stripe.com --skip-ocean --skip-prospeo
+npm run relay -- run stripe.com --skip-ocean --skip-prospeo
 ```
