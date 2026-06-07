@@ -400,7 +400,7 @@ export class OutreachPipeline {
               toEmail: candidate.email,
               toName: candidate.contactName,
               email: candidate.rendered,
-              tags: ["vocallabs-outreach", run.id]
+              tags: ["cold-outreach", run.id]
             });
             await this.repos.createMessage({
               runId: run.id,

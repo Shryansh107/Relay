@@ -1,29 +1,82 @@
-# Vocallabs Outreach Pipeline
+# Automated Outreach Pipeline
 
-Automated cold-outreach CLI pipeline for the assignment in `plan.md`.
+An automated, end-to-end cold-outreach command-line pipeline that takes a single seed `company.domain` input and runs a multi-stage outreach campaign autonomously.
 
-## Setup
+## Project Description
 
+The pipeline automates target company discovery, contact prospecting, email resolution, safety gate validation, and email dispatch in a modular, zero-interaction flow:
+
+1. **Ocean.io**: Finds similar lookalike companies based on the seed domain.
+2. **Prospeo**: Discovers senior decision-makers (C-suite & VP level) at the lookalike companies.
+3. **Eazyreach / Anymail Finder**: Resolves and verifies professional email addresses for each contact.
+4. **Safety Gate**: Evaluates deduplication rules, suppression list cooldowns, and send limits before dispatching.
+5. **Brevo**: Renders personalized templates via Handlebars and dispatches outreach emails.
+
+All results are cached in a local SQLite database, allowing subsequent pipeline runs to run instantly by reusing cached entities.
+
+---
+
+## Getting Started
+
+### Prerequisites
+- Node.js 20+
+- SQLite3
+
+### Setup & Installation
+
+1. **Install dependencies**:
+   ```bash
+   npm install
+   ```
+
+2. **Configure your environment**:
+   Copy `.env.example` to `.env` and fill in your API credentials:
+   ```bash
+   cp .env.example .env
+   ```
+
+3. **Initialize the Database**:
+   Set up your SQLite schema using Prisma:
+   ```bash
+   npm run prisma:generate
+   ```
+   Apply the database schema directly to your local file:
+   ```bash
+   npm run prisma:push
+   ```
+
+4. **Verify setup**:
+   Compile the TypeScript code and execute tests to ensure a clean setup:
+   ```bash
+   npm run build
+   # Run Vitest test suite
+   npm test
+   ```
+
+---
+
+## CLI Usage Reference
+
+### Primary Command
+To run the full outreach pipeline with all stages active:
 ```bash
-npm install
-cp .env.example .env
-npm run prisma:generate
-npm run prisma:push
+npm run outreach -- run <company.domain>
 ```
 
-Fill `.env` with API credentials for Ocean.io, Prospeo, Eazyreach, and Brevo. Brevo is dry-run by default through `DEFAULT_DRY_RUN=true`; set it to `false` only when the sender is verified and real sends are intended.
+### CLI Flags (Options)
+Modify pipeline behavior by passing the following flags after the `--` separator:
 
-## Run
+| Flag | Description |
+|---|---|
+| `--use-anymailfinder` | Uses **Anymail Finder API** (recommends setting `ANYMAIL_FINDER_API_KEY`) instead of Eazyreach. This disables the 12-second rate-limit pause, as Anymail Finder has no rate limits. |
+| `--skip-ocean` | Skips Ocean.io similarity discovery and retrieves companies from the database cached from previous runs. |
+| `--skip-prospeo` | Skips Prospeo contact discovery and copies cached contacts. |
+| `--skip-eazyreach` | Skips the email verification stage and copies cached verified emails. |
+| `--skip-safety` | Bypasses the Policy Engine evaluation of the outbound email list. |
+| `--skip-brevo` | Bypasses the Brevo email dispatch stage. |
+| `--show-inputs` | Shows detailed input details (e.g. lists of companies/contacts) passed between stages in terminal logs. |
 
+*Example:* Run the pipeline for `stripe.com`, skipping the company/contact lookup APIs by fetching them from the local cache database, and resolving their emails using Anymail Finder:
 ```bash
-npm run outreach -- run company.com
+npm run outreach -- run stripe.com --skip-ocean --skip-prospeo --use-anymailfinder
 ```
-
-The command accepts exactly one user input, the seed company domain. It then runs Ocean.io company discovery, Prospeo contact discovery, Eazyreach email verification, the automatic safety gate, and the Brevo send or dry-run stage.
-
-## Notes
-
-- SQLite is stored at `data/outreach.db` by default.
-- `MAX_SENDS_PER_RUN` defaults to `5` for demo safety.
-- Eazyreach endpoint details are configurable because the public site confirms API access but does not expose stable endpoint-level docs.
-- Repeated runs avoid contacting the same email inside `RECONTACT_COOLDOWN_DAYS`.

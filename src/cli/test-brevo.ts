@@ -26,7 +26,7 @@ program
       const mockContact = {
         fullName: "Shryansh",
         title: "Lead Engineer",
-        company: { name: "VocalLabs", domain: "vocallabs.ai" }
+        company: { name: "Acme Corp", domain: "acme.com" }
       };
       const seedDomain = "stripe.com";
 
