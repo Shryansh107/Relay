@@ -2,7 +2,7 @@
 
 An automated, end-to-end cold-outreach CLI  that takes a single seed `company.domain` input and runs a multi-stage outreach campaign autonomously on its lookalike companies.
 
-![Relay CLI Screenshot](screenshot.png)
+<video src="assets/video.webm" width="100%" autoplay loop muted playsinline></video>
 
 ## Project Description
 
