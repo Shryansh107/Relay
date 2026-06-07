@@ -6,6 +6,14 @@ An automated, end-to-end cold-outreach command-line pipeline that takes a single
 
 This is an automated cold-outreach assistant that automates the process of finding lookalike companies, identifying key decision-makers, resolving contact details, validating safety and cooldown rules, and dispatching personalized outbound emails:
 
+```mermaid
+flowchart TD
+    A[Seed Company Domain] --> B[Discover Similar Companies]
+    B --> C[Find Decision-Makers]
+    C --> D[Resolve Verified Emails]
+    D --> E[Send Personalized Emails]
+```
+
 1. **Discover Similar Companies**: Finds companies that are similar to a given target company.
 2. **Find Decision-Makers**: Identifies senior people (such as executives and managers) working at those discovered companies.
 3. **Resolve Verified Emails**: Searches for and validates the professional email addresses of those contacts.
