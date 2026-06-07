@@ -75,9 +75,12 @@ program
       );
     } catch (error) {
       if (process.stdout.isTTY) {
-        logger.level = "info";
+        const errMsg = error instanceof Error ? error.message : String(error);
+        console.log(`\n\x1b[31m\x1b[1m✖ Command failed\x1b[0m`);
+        console.log(`\x1b[31mError Details: ${errMsg}\x1b[0m\n`);
+      } else {
+        logger.error({ err: error }, "Command failed");
       }
-      logger.error({ err: error }, "Command failed");
       process.exitCode = 1;
     } finally {
       await prisma?.$disconnect();

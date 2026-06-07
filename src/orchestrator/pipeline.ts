@@ -28,11 +28,17 @@ export class OutreachPipeline {
   private readonly anymailfinder: AnymailFinderClient;
   private readonly brevo: EmailSendClient;
   private readonly db: PrismaClient;
+  private readonly logger: {
+    info: (msgOrObj: string | object, msg?: string) => void;
+    warn: (msgOrObj: string | object, msg?: string) => void;
+    error: (msgOrObj: string | object, msg?: string) => void;
+  };
+  private setRunId: (id: string) => void = () => {};
 
   constructor(
     db: PrismaClient,
     private readonly config: AppConfig,
-    private readonly logger: pino.Logger,
+    pinoLogger: pino.Logger,
     brevoClient?: EmailSendClient
   ) {
     this.db = db;
@@ -41,6 +47,70 @@ export class OutreachPipeline {
     this.prospeo = new ProspeoClient(config);
     this.anymailfinder = new AnymailFinderClient(config);
     this.brevo = brevoClient ?? new BrevoClient(config);
+
+    let currentRunId: string | undefined;
+    this.setRunId = (id: string) => { currentRunId = id; };
+    const isTTY = process.stdout.isTTY && !process.env.CI;
+
+    this.logger = {
+      info: (msgOrObj: string | object, msg?: string) => {
+        const details = typeof msgOrObj === "object" ? msgOrObj : undefined;
+        const message = typeof msgOrObj === "string" ? msgOrObj : (msg ?? "");
+        if (!isTTY) {
+          if (details) pinoLogger.info(details, message);
+          else pinoLogger.info(message);
+        }
+        if (currentRunId) {
+          this.db.providerLog.create({
+            data: {
+              runId: currentRunId,
+              provider: "system",
+              stage: "info",
+              requestSummary: message,
+              responseSummary: details ? JSON.stringify(details) : null
+            }
+          }).catch(() => {});
+        }
+      },
+      warn: (msgOrObj: string | object, msg?: string) => {
+        const details = typeof msgOrObj === "object" ? msgOrObj : undefined;
+        const message = typeof msgOrObj === "string" ? msgOrObj : (msg ?? "");
+        if (!isTTY) {
+          if (details) pinoLogger.warn(details, message);
+          else pinoLogger.warn(message);
+        }
+        if (currentRunId) {
+          this.db.providerLog.create({
+            data: {
+              runId: currentRunId,
+              provider: "system",
+              stage: "warn",
+              requestSummary: message,
+              responseSummary: details ? JSON.stringify(details) : null
+            }
+          }).catch(() => {});
+        }
+      },
+      error: (msgOrObj: string | object, msg?: string) => {
+        const details = typeof msgOrObj === "object" ? msgOrObj : undefined;
+        const message = typeof msgOrObj === "string" ? msgOrObj : (msg ?? "");
+        if (!isTTY) {
+          if (details) pinoLogger.error(details, message);
+          else pinoLogger.error(message);
+        }
+        if (currentRunId) {
+          this.db.providerLog.create({
+            data: {
+              runId: currentRunId,
+              provider: "system",
+              stage: "error",
+              requestSummary: message,
+              responseSummary: details ? JSON.stringify(details) : null
+            }
+          }).catch(() => {});
+        }
+      }
+    };
   }
 
   async run(
@@ -98,6 +168,8 @@ export class OutreachPipeline {
       run = await this.repos.createRun(seedDomain);
     }
 
+    this.setRunId(run.id);
+
     const initialCompaniesCount = isResumed ? await this.db.company.count({ where: { runId: run.id } }) : 0;
     const initialContactsCount = isResumed ? await this.db.contact.count({ where: { runId: run.id } }) : 0;
     const initialEmailsCount = isResumed ? await this.db.email.count({
@@ -151,6 +223,8 @@ export class OutreachPipeline {
 
     const spinner = new Spinner();
     let activeStageName = "Initialization";
+    const isInteractive = process.stdout.isTTY && !process.env.CI;
+    const maybeDelay = () => isInteractive ? new Promise((resolve) => setTimeout(resolve, 1000)) : Promise.resolve();
 
     try {
       this.logger.info({ runId: run.id, seedDomain, skipOcean, skipProspeo, skipVerification, skipSafety, skipBrevo }, "Starting outreach pipeline");
@@ -158,6 +232,7 @@ export class OutreachPipeline {
       // Stage 1: Ocean.io
       activeStageName = "Company discovery";
       spinner.start("Discovering similar companies...");
+      await maybeDelay();
       await this.repos.updateRun(run.id, { stage: "ocean_io" });
       let companies: Company[] = [];
 
@@ -231,6 +306,7 @@ export class OutreachPipeline {
       // Stage 2: Prospeo
       activeStageName = "Contact discovery";
       spinner.start("Discovering contacts...");
+      await maybeDelay();
       await this.repos.updateRun(run.id, { stage: "prospeo" });
       if (showInputs) {
         this.logger.info({ companies: companies.map((c) => c.domain) }, "Entering Prospeo stage. Ocean companies list:");
@@ -341,6 +417,7 @@ export class OutreachPipeline {
       // Stage 3: Anymail Finder
       activeStageName = "Email verification";
       spinner.start("Verifying email addresses...");
+      await maybeDelay();
       await this.repos.updateRun(run.id, { stage: "anymailfinder" });
       if (showInputs) {
         const currentCompanies = await this.repos.listRunCompanies(run.id);
@@ -471,6 +548,7 @@ export class OutreachPipeline {
       // Stage 4: Safety Gate
       activeStageName = "Safety evaluation";
       spinner.start("Running safety gate...");
+      await maybeDelay();
       await this.repos.updateRun(run.id, { stage: "safety_gate" });
       const emailRecords = await this.repos.listEligibleEmails(run.id);
       if (showInputs) {
@@ -520,6 +598,7 @@ export class OutreachPipeline {
           // Stage 5: Brevo
           activeStageName = "Email dispatch";
           spinner.start("Sending emails...");
+          await maybeDelay();
           await this.repos.updateRun(run.id, { stage: "brevo" });
           if (showInputs) {
             this.logger.info({ allowed: decision.allowed.map((c) => `${c.contactName}: ${c.email}`) }, "Entering Brevo email dispatch stage. Allowed candidates list:");
