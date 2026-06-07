@@ -17,7 +17,7 @@ export type VerifiedEmail = {
   contactId: string;
   email: string;
   verificationStatus: string;
-  provider: "eazyreach" | "anymailfinder";
+  provider: "anymailfinder";
   confidence?: number;
   providerJson: Record<string, unknown>;
 };
