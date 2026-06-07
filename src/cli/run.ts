@@ -49,23 +49,53 @@ program
       });
 
       if (process.stdout.isTTY) {
-        logger.level = "info";
+        const formatLine = (label: string, value: string, valueColor = "37") => {
+          const totalWidth = 52;
+          const labelPart = label + ":";
+          const paddedLabel = labelPart.padEnd(16);
+          const paddedValue = value.padEnd(totalWidth - 16);
+          return `  \x1b[36m│\x1b[0m  \x1b[1m${paddedLabel}\x1b[0m\x1b[${valueColor}m\x1b[1m${paddedValue}\x1b[0m  \x1b[36m│\x1b[0m`;
+        };
+
+        const modeVal = result.dryRun ? "SIMULATION (dry-run)" : "LIVE";
+        const modeColor = result.dryRun ? "33" : "32";
+        const statusVal = result.status.toUpperCase();
+        const statusColor = result.status === "completed" ? "32" : "31";
+
+        console.log(`
+  \x1b[36m┌────────────────────────────────────────────────────────┐
+  │\x1b[0m                   \x1b[1mRELAY RUN SUMMARY\x1b[0m                    \x1b[36m│
+  ├────────────────────────────────────────────────────────┤\x1b[0m
+${formatLine("Seed Domain", result.seedDomain, "37")}
+${formatLine("Run ID", result.runId, "37")}
+${formatLine("Mode", modeVal, modeColor)}
+${formatLine("Status", statusVal, statusColor)}
+  \x1b[36m├────────────────────────────────────────────────────────┤\x1b[0m
+${formatLine("Companies", `${result.companiesFound} found`, "35")}
+${formatLine("Contacts", `${result.contactsFound} found`, "35")}
+${formatLine("Emails", `${result.emailsVerified} verified`, "35")}
+${formatLine("Sent", `${result.emailsSent} sent`, "32")}
+${formatLine("Skipped", `${result.emailsSkipped} skipped`, "33")}
+${formatLine("Failures", `${result.failures} failures`, "31")}
+  \x1b[36m└────────────────────────────────────────────────────────┘\x1b[0m
+`);
+      } else {
+        logger.info(
+          {
+            runId: result.runId,
+            seedDomain: result.seedDomain,
+            status: result.status,
+            dryRun: result.dryRun,
+            companiesFound: result.companiesFound,
+            contactsFound: result.contactsFound,
+            emailsVerified: result.emailsVerified,
+            emailsSent: result.emailsSent,
+            emailsSkipped: result.emailsSkipped,
+            failures: result.failures
+          },
+          "Pipeline summary"
+        );
       }
-      logger.info(
-        {
-          runId: result.runId,
-          seedDomain: result.seedDomain,
-          status: result.status,
-          dryRun: result.dryRun,
-          companiesFound: result.companiesFound,
-          contactsFound: result.contactsFound,
-          emailsVerified: result.emailsVerified,
-          emailsSent: result.emailsSent,
-          emailsSkipped: result.emailsSkipped,
-          failures: result.failures
-        },
-        "Pipeline summary"
-      );
     } catch (error) {
       if (process.stdout.isTTY) {
         const errMsg = error instanceof Error ? error.message : String(error);

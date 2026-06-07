@@ -34,6 +34,7 @@ export class OutreachPipeline {
     error: (msgOrObj: string | object, msg?: string) => void;
   };
   private setRunId: (id: string) => void = () => {};
+  private activeSpinner: Spinner | null = null;
 
   constructor(
     db: PrismaClient,
@@ -60,6 +61,9 @@ export class OutreachPipeline {
           if (details) pinoLogger.info(details, message);
           else pinoLogger.info(message);
         }
+        if (isTTY && this.activeSpinner && this.activeSpinner.isActive) {
+          this.activeSpinner.log(message || (details ? JSON.stringify(details) : ""));
+        }
         if (currentRunId) {
           this.db.providerLog.create({
             data: {
@@ -79,6 +83,9 @@ export class OutreachPipeline {
           if (details) pinoLogger.warn(details, message);
           else pinoLogger.warn(message);
         }
+        if (isTTY && this.activeSpinner && this.activeSpinner.isActive) {
+          this.activeSpinner.log(message || (details ? JSON.stringify(details) : ""));
+        }
         if (currentRunId) {
           this.db.providerLog.create({
             data: {
@@ -97,6 +104,9 @@ export class OutreachPipeline {
         if (!isTTY) {
           if (details) pinoLogger.error(details, message);
           else pinoLogger.error(message);
+        }
+        if (isTTY && this.activeSpinner && this.activeSpinner.isActive) {
+          this.activeSpinner.log(message || (details ? JSON.stringify(details) : ""));
         }
         if (currentRunId) {
           this.db.providerLog.create({
@@ -212,6 +222,7 @@ export class OutreachPipeline {
     ].includes(resumeStage);
 
     const spinner = new Spinner();
+    this.activeSpinner = spinner;
     let activeStageName = "Initialization";
     const isInteractive = process.stdout.isTTY && !process.env.CI;
     const maybeDelay = () => isInteractive ? new Promise((resolve) => setTimeout(resolve, 1000)) : Promise.resolve();
@@ -229,7 +240,7 @@ export class OutreachPipeline {
       if (isOceanCompleted) {
         companies = await this.repos.listRunCompanies(run.id);
         summary.companiesFound = companies.length;
-        spinner.stop(true, `${companies.length} Companies loaded (Resumed)`);
+        spinner.stop(true, `${companies.length} Companies found`);
       } else {
         const previousRun = await this.db.run.findFirst({
           where: { seedDomain, status: "completed" },
@@ -278,7 +289,7 @@ export class OutreachPipeline {
       if (isProspeoCompleted) {
         const contacts = await this.repos.listRunContacts(run.id);
         summary.contactsFound = contacts.length;
-        spinner.stop(true, `${contacts.length} Contacts loaded (Resumed)`);
+        spinner.stop(true, `${contacts.length} Contacts found`);
       } else {
         for (const company of companies) {
           try {
@@ -352,7 +363,7 @@ export class OutreachPipeline {
       if (isAnymailFinderCompleted) {
         const verifiedEmails = await this.repos.listEligibleEmails(run.id);
         summary.emailsVerified = verifiedEmails.length;
-        spinner.stop(true, `${verifiedEmails.length} Emails verified (Resumed)`);
+        spinner.stop(true, `${verifiedEmails.length} Emails verified`);
       } else {
         const targetContacts = await this.repos.listRunContacts(run.id);
 
@@ -569,6 +580,7 @@ export class OutreachPipeline {
         summaryJson: JSON.stringify(result),
         endedAt: new Date()
       });
+      this.activeSpinner = null;
       return result;
     } catch (error) {
       spinner.stop(false, `${activeStageName} failed`);
@@ -586,6 +598,7 @@ export class OutreachPipeline {
         endedAt: new Date()
       });
       this.logger.error({ err: error, runId: run.id }, "Outreach pipeline failed");
+      this.activeSpinner = null;
       throw error;
     }
   }
