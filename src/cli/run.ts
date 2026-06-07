@@ -22,6 +22,7 @@ program
   .option("--skip-safety", "skip Safety Gate evaluation")
   .option("--skip-brevo", "skip Brevo email dispatch")
   .option("--show-inputs", "show input details passed between stages", false)
+  .option("--use-anymailfinder", "use Anymail Finder instead of Eazyreach for email verification")
   .description("Run the outreach pipeline with one seed domain")
   .allowExcessArguments(false)
   .action(async (domain: string, options: {
@@ -31,6 +32,7 @@ program
     skipSafety?: boolean;
     skipBrevo?: boolean;
     showInputs?: boolean;
+    useAnymailfinder?: boolean;
   }) => {
     const logger = createLogger();
     let prisma: ReturnType<typeof createPrismaClient> | undefined;

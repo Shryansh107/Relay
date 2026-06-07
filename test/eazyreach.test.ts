@@ -12,6 +12,7 @@ const mockConfig: AppConfig = {
   EAZYREACH_CLIENT_ID: "test_client_id",
   EAZYREACH_CLIENT_SECRET: "test_client_secret",
   EAZYREACH_BASE_URL: "https://api.superflow.run",
+  ANYMAIL_FINDER_BASE_URL: "https://api.anymailfinder.com",
   OCEAN_IO_API_KEY: "ocean",
   OCEAN_IO_BASE_URL: "https://api.ocean.io",
   OCEAN_IO_SEARCH_PATH: "/v3",

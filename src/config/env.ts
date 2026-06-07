@@ -29,6 +29,8 @@ export const envSchema = z.object({
   EAZYREACH_CLIENT_ID: z.string().min(1),
   EAZYREACH_CLIENT_SECRET: z.string().min(1),
   EAZYREACH_BASE_URL: z.string().url().default("https://api.superflow.run"),
+  ANYMAIL_FINDER_API_KEY: z.string().optional(),
+  ANYMAIL_FINDER_BASE_URL: z.string().url().default("https://api.anymailfinder.com"),
   BREVO_API_KEY: z.string().min(1),
   BREVO_BASE_URL: z.string().url().default("https://api.brevo.com"),
   BREVO_SENDER_EMAIL: z.string().email(),

@@ -5,6 +5,7 @@ import { Repositories } from "../db/repositories.js";
 import type { StageSummary, DiscoveredCompany, DiscoveredContact } from "../domain/types.js";
 import { BrevoClient } from "../providers/brevo.js";
 import { EazyreachClient } from "../providers/eazyreach.js";
+import { AnymailFinderClient } from "../providers/anymailfinder.js";
 import { OceanIoClient } from "../providers/oceanio.js";
 import { ProspeoClient } from "../providers/prospeo.js";
 import type { EmailSendClient } from "../providers/types.js";
@@ -25,6 +26,7 @@ export class OutreachPipeline {
   private readonly ocean: OceanIoClient;
   private readonly prospeo: ProspeoClient;
   private readonly eazyreach: EazyreachClient;
+  private readonly anymailfinder: AnymailFinderClient;
   private readonly brevo: EmailSendClient;
   private readonly db: PrismaClient;
 
@@ -39,6 +41,7 @@ export class OutreachPipeline {
     this.ocean = new OceanIoClient(config);
     this.prospeo = new ProspeoClient(config);
     this.eazyreach = new EazyreachClient(config);
+    this.anymailfinder = new AnymailFinderClient(config);
     this.brevo = brevoClient ?? new BrevoClient(config);
   }
 
@@ -51,6 +54,7 @@ export class OutreachPipeline {
       skipSafety?: boolean;
       skipBrevo?: boolean;
       showInputs?: boolean;
+      useAnymailfinder?: boolean;
     }
   ): Promise<PipelineResult> {
     const seedDomain = normalizeDomain(seedInput);
@@ -70,9 +74,10 @@ export class OutreachPipeline {
     const skipSafety = options?.skipSafety ?? false;
     const skipBrevo = options?.skipBrevo ?? false;
     const showInputs = options?.showInputs ?? false;
+    const useAnymailfinder = options?.useAnymailfinder ?? false;
 
     try {
-      this.logger.info({ runId: run.id, seedDomain, skipOcean, skipProspeo, skipEazyreach, skipSafety, skipBrevo }, "Starting outreach pipeline");
+      this.logger.info({ runId: run.id, seedDomain, skipOcean, skipProspeo, skipEazyreach, skipSafety, skipBrevo, useAnymailfinder }, "Starting outreach pipeline");
 
       await this.repos.updateRun(run.id, { stage: "ocean_io" });
       let companies: Company[] = [];
@@ -221,15 +226,17 @@ export class OutreachPipeline {
         );
       }
 
-      await this.repos.updateRun(run.id, { stage: "eazyreach" });
+      const verificationStage = useAnymailfinder ? "anymailfinder" : "eazyreach";
+      const verificationProviderName = useAnymailfinder ? "Anymail Finder" : "Eazyreach";
+      await this.repos.updateRun(run.id, { stage: verificationStage });
       if (showInputs) {
         const currentCompanies = await this.repos.listRunCompanies(run.id);
         const currentContacts = await this.repos.listRunContacts(run.id);
-        this.logger.info({ companies: currentCompanies.map((c) => c.domain) }, "Entering Eazyreach stage. Ocean companies list:");
+        this.logger.info({ companies: currentCompanies.map((c) => c.domain) }, `Entering ${verificationProviderName} stage. Ocean companies list:`);
         this.logger.info({ contacts: currentContacts.map((c) => `${c.fullName} (${c.company.domain}) - ${c.linkedinUrl}`) }, "Prospeo contacts list:");
       }
       if (skipEazyreach) {
-        this.logger.info("Skipping Eazyreach email verification stage.");
+        this.logger.info(`Skipping ${verificationProviderName} email verification stage.`);
         const previousRun = await this.db.run.findFirst({
           where: { seedDomain, status: "completed" },
           orderBy: { startedAt: "desc" }
@@ -251,7 +258,7 @@ export class OutreachPipeline {
                   contactId,
                   email: e.email,
                   verificationStatus: e.verificationStatus,
-                  provider: e.provider as "eazyreach",
+                  provider: e.provider as "eazyreach" | "anymailfinder",
                   confidence: e.confidence ?? undefined,
                   providerJson: e.providerJson ? JSON.parse(e.providerJson) : {}
                 };
@@ -274,41 +281,45 @@ export class OutreachPipeline {
 
             let verified = null;
             if (previousEmail) {
-              this.logger.info({ contact: contact.fullName, email: previousEmail.email }, "Eazyreach: Found cached email. Skipping API call.");
+              this.logger.info({ contact: contact.fullName, email: previousEmail.email }, `${previousEmail.provider}: Found cached email. Skipping API call.`);
               verified = {
                 contactId: contact.id,
                 email: previousEmail.email,
                 verificationStatus: previousEmail.verificationStatus,
-                provider: previousEmail.provider as "eazyreach",
+                provider: previousEmail.provider as "eazyreach" | "anymailfinder",
                 confidence: previousEmail.confidence ?? undefined,
                 providerJson: previousEmail.providerJson ? JSON.parse(previousEmail.providerJson) : {}
               };
             } else {
-              if (processedCount > 0) {
-                this.logger.info("Applying rate limit: pausing 12 seconds before next Eazyreach request...");
-                await new Promise((resolve) => setTimeout(resolve, 12000));
+              if (useAnymailfinder) {
+                verified = await this.anymailfinder.verify(contact);
+              } else {
+                if (processedCount > 0) {
+                  this.logger.info("Applying rate limit: pausing 12 seconds before next Eazyreach request...");
+                  await new Promise((resolve) => setTimeout(resolve, 12000));
+                }
+                processedCount++;
+                verified = await this.eazyreach.verify(contact);
               }
-              processedCount++;
-              verified = await this.eazyreach.verify(contact);
             }
 
             if (!verified) {
-              this.logger.info({ contact: contact.fullName }, "Eazyreach found no verified email");
+              this.logger.info({ contact: contact.fullName }, `${verificationProviderName} found no verified email`);
               continue;
             }
             await this.repos.upsertEmails([verified]);
             summary.emailsVerified += 1;
-            this.logger.info({ contact: contact.fullName }, "Eazyreach email verification complete");
+            this.logger.info({ contact: contact.fullName }, `${verificationProviderName} email verification complete`);
           } catch (error) {
             summary.failures += 1;
             await this.repos.logProvider({
               runId: run.id,
-              provider: "eazyreach",
+              provider: useAnymailfinder ? "anymailfinder" : "eazyreach",
               stage: "email_verification",
               requestSummary: { contact: contact.linkedinUrl },
               responseSummary: serializeError(error)
             });
-            this.logger.warn({ err: error, contact: contact.linkedinUrl }, "Eazyreach lookup failed; continuing");
+            this.logger.warn({ err: error, contact: contact.linkedinUrl }, `${verificationProviderName} lookup failed; continuing`);
           }
         }
 
@@ -319,7 +330,7 @@ export class OutreachPipeline {
             emailsVerified: summary.emailsVerified,
             failures: summary.failures
           },
-          "Eazyreach email verification stage complete"
+          `${verificationProviderName} email verification stage complete`
         );
       }
 
