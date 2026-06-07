@@ -1,4 +1,4 @@
-# Automated Outreach Pipeline
+# Outreach Assistant
 
 An automated, end-to-end cold-outreach command-line pipeline that takes a single seed `company.domain` input and runs a multi-stage outreach campaign autonomously.
 
