@@ -5,9 +5,7 @@ const validEnv = {
   DATABASE_URL: "file:./data/test.db",
   OCEAN_IO_API_KEY: "ocean",
   PROSPEO_API_KEY: "prospeo",
-  EAZYREACH_CLIENT_ID: "client_id",
-  EAZYREACH_CLIENT_SECRET: "client_secret",
-  EAZYREACH_BASE_URL: "https://api.eazyreach.app",
+  ANYMAIL_FINDER_API_KEY: "anymail",
   BREVO_API_KEY: "brevo",
   BREVO_SENDER_EMAIL: "sender@example.com",
   BREVO_SENDER_NAME: "Sender"

@@ -9,9 +9,6 @@ vi.mock("../src/utils/http.js", () => ({
 
 const mockConfig: AppConfig = {
   DATABASE_URL: "file:./data/outreach.db",
-  EAZYREACH_CLIENT_ID: "test_client_id",
-  EAZYREACH_CLIENT_SECRET: "test_client_secret",
-  EAZYREACH_BASE_URL: "https://api.superflow.run",
   ANYMAIL_FINDER_API_KEY: "anymail_key_123",
   ANYMAIL_FINDER_BASE_URL: "https://api.anymailfinder.com",
   OCEAN_IO_API_KEY: "ocean",
@@ -118,7 +115,7 @@ describe("AnymailFinderClient", () => {
   it("throws an error if ANYMAIL_FINDER_API_KEY is not configured", async () => {
     const client = new AnymailFinderClient({
       ...mockConfig,
-      ANYMAIL_FINDER_API_KEY: undefined
+      ANYMAIL_FINDER_API_KEY: ""
     });
 
     await expect(client.verify(mockContact)).rejects.toThrow(

@@ -8,7 +8,7 @@ The pipeline automates target company discovery, contact prospecting, email reso
 
 1. **Ocean.io**: Finds similar lookalike companies based on the seed domain.
 2. **Prospeo**: Discovers senior decision-makers (C-suite & VP level) at the lookalike companies.
-3. **Eazyreach / Anymail Finder**: Resolves and verifies professional email addresses for each contact.
+3. **Anymail Finder**: Resolves and verifies professional email addresses for each contact.
 4. **Safety Gate**: Evaluates deduplication rules, suppression list cooldowns, and send limits before dispatching.
 5. **Brevo**: Renders personalized templates via Handlebars and dispatches outreach emails.
 
@@ -68,15 +68,14 @@ Modify pipeline behavior by passing the following flags after the `--` separator
 
 | Flag | Description |
 |---|---|
-| `--use-anymailfinder` | Uses **Anymail Finder API** (recommends setting `ANYMAIL_FINDER_API_KEY`) instead of Eazyreach. This disables the 12-second rate-limit pause, as Anymail Finder has no rate limits. |
 | `--skip-ocean` | Skips Ocean.io similarity discovery and retrieves companies from the database cached from previous runs. |
 | `--skip-prospeo` | Skips Prospeo contact discovery and copies cached contacts. |
-| `--skip-eazyreach` | Skips the email verification stage and copies cached verified emails. |
+| `--skip-verification` | Skips the Anymail Finder email verification stage and copies cached verified emails. |
 | `--skip-safety` | Bypasses the Policy Engine evaluation of the outbound email list. |
 | `--skip-brevo` | Bypasses the Brevo email dispatch stage. |
 | `--show-inputs` | Shows detailed input details (e.g. lists of companies/contacts) passed between stages in terminal logs. |
 
-*Example:* Run the pipeline for `stripe.com`, skipping the company/contact lookup APIs by fetching them from the local cache database, and resolving their emails using Anymail Finder:
+*Example:* Run the pipeline for `stripe.com`, skipping the company/contact lookup APIs by fetching them from the local cache database, and verifying emails:
 ```bash
-npm run outreach -- run stripe.com --skip-ocean --skip-prospeo --use-anymailfinder
+npm run outreach -- run stripe.com --skip-ocean --skip-prospeo
 ```
