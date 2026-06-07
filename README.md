@@ -73,14 +73,10 @@ Modify pipeline behavior by passing the following flags after the `--` separator
 
 | Flag | Description |
 |---|---|
-| `--skip-ocean` | Skips Ocean.io similarity discovery and retrieves companies from the database cached from previous runs. |
-| `--skip-prospeo` | Skips Prospeo contact discovery and copies cached contacts. |
-| `--skip-verification` | Skips the Anymail Finder email verification stage and copies cached verified emails. |
-| `--skip-safety` | Bypasses the Policy Engine evaluation of the outbound email list. |
-| `--skip-brevo` | Bypasses the Brevo email dispatch stage. |
-| `--show-inputs` | Shows detailed input details (e.g. lists of companies/contacts) passed between stages in terminal logs. |
+| `--live` | Sends real outreach emails to discovered contacts. If omitted, the pipeline runs in simulation mode, displaying the progress on the CLI but redirecting emails to `shryansh2024@gmail.com`. |
+| `--no-cache` | Disables reading cached lookups (companies, contacts, and emails) from previous completed runs. It forces fresh API lookups and stores the new data in the database. |
 
-*Example:* Run the pipeline for `stripe.com`, skipping the company/contact lookup APIs by fetching them from the local cache database, and verifying emails:
+*Example:* Run the pipeline for `stripe.com` in live mode, disabling lookups from previous run database cache:
 ```bash
-npm run relay -- run stripe.com --skip-ocean --skip-prospeo
+npm run relay -- run stripe.com --live --no-cache
 ```
