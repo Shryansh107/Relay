@@ -34,6 +34,7 @@ export const envSchema = z.object({
   BREVO_SENDER_NAME: z.string().min(1).default("Outreach Team"),
   MAX_SENDS_PER_RUN: intFromString("5"),
   MAX_CONTACTS_PER_COMPANY: intFromString("3"),
+  PROSPEO_MAX_COMPANIES_LIMIT: intFromString("100"),
   RECONTACT_COOLDOWN_DAYS: intFromString("30"),
   DEFAULT_DRY_RUN: booleanFromString,
   HTTP_TIMEOUT_MS: intFromString("20000"),

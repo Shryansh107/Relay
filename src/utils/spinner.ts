@@ -5,7 +5,7 @@ export class Spinner {
   private text = "";
   private readonly isTTY: boolean;
   private logs: string[] = [];
-  private readonly logLimit = 4;
+  private readonly logLimit = 30; // increased height for more log lines
 
   constructor() {
     this.isTTY = process.stdout.isTTY && !process.env.CI;

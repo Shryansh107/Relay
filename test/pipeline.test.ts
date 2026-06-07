@@ -19,6 +19,7 @@ const mockConfig: AppConfig = {
   BREVO_SENDER_NAME: "Sender",
   MAX_SENDS_PER_RUN: 5,
   MAX_CONTACTS_PER_COMPANY: 3,
+  PROSPEO_MAX_COMPANIES_LIMIT: 100,
   RECONTACT_COOLDOWN_DAYS: 30,
   DEFAULT_DRY_RUN: true,
   HTTP_TIMEOUT_MS: 20000,
@@ -288,5 +289,39 @@ describe("OutreachPipeline Auto-Resume and Spinners", () => {
 
     // Since noCache is active, we should have made the lookalike API call instead of reading from DB cache
     expect(mockFindLookalikes).toHaveBeenCalled();
+  });
+
+  it("limits the number of companies processed in Prospeo stage based on PROSPEO_MAX_COMPANIES_LIMIT", async () => {
+    mockFindLookalikes.mockResolvedValueOnce([
+      { domain: "comp1.com", name: "Comp 1", source: "ocean.io", firmographic: {} },
+      { domain: "comp2.com", name: "Comp 2", source: "ocean.io", firmographic: {} },
+      { domain: "comp3.com", name: "Comp 3", source: "ocean.io", firmographic: {} }
+    ]);
+    mockDb.company.upsert
+      .mockResolvedValueOnce({ id: "c1", domain: "comp1.com", name: "Comp 1" })
+      .mockResolvedValueOnce({ id: "c2", domain: "comp2.com", name: "Comp 2" })
+      .mockResolvedValueOnce({ id: "c3", domain: "comp3.com", name: "Comp 3" });
+
+    const customConfig = {
+      ...mockConfig,
+      PROSPEO_MAX_COMPANIES_LIMIT: 2
+    };
+
+    const mockProspeo = {
+      findDecisionMakers: vi.fn().mockResolvedValue([])
+    };
+
+    mockDb.contact.findMany.mockResolvedValue([]);
+
+    const pipeline = new OutreachPipeline(
+      mockDb as unknown as PrismaClient,
+      customConfig,
+      mockLogger
+    );
+    (pipeline as any).prospeo = mockProspeo;
+
+    await pipeline.run("seed.com");
+
+    expect(mockProspeo.findDecisionMakers).toHaveBeenCalledTimes(2);
   });
 });

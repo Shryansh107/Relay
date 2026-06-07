@@ -16,6 +16,10 @@ describe("loadConfig", () => {
     const config = loadConfig(validEnv);
     expect(config.MAX_SENDS_PER_RUN).toBe(5);
     expect(config.DEFAULT_DRY_RUN).toBe(true);
+    expect(config.PROSPEO_MAX_COMPANIES_LIMIT).toBe(100);
+
+    const configOverridden = loadConfig({ ...validEnv, PROSPEO_MAX_COMPANIES_LIMIT: "25" });
+    expect(configOverridden.PROSPEO_MAX_COMPANIES_LIMIT).toBe(25);
   });
 
   it("fails when required provider secrets are missing", () => {

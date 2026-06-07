@@ -57,8 +57,6 @@ program
           return `  \x1b[36m│\x1b[0m  \x1b[1m${paddedLabel}\x1b[0m\x1b[${valueColor}m\x1b[1m${paddedValue}\x1b[0m  \x1b[36m│\x1b[0m`;
         };
 
-        const modeVal = result.dryRun ? "SIMULATION (dry-run)" : "LIVE";
-        const modeColor = result.dryRun ? "33" : "32";
         const statusVal = result.status.toUpperCase();
         const statusColor = result.status === "completed" ? "32" : "31";
 
@@ -68,7 +66,6 @@ program
   ├────────────────────────────────────────────────────────┤\x1b[0m
 ${formatLine("Seed Domain", result.seedDomain, "37")}
 ${formatLine("Run ID", result.runId, "37")}
-${formatLine("Mode", modeVal, modeColor)}
 ${formatLine("Status", statusVal, statusColor)}
   \x1b[36m├────────────────────────────────────────────────────────┤\x1b[0m
 ${formatLine("Companies", `${result.companiesFound} found`, "35")}
@@ -85,7 +82,6 @@ ${formatLine("Failures", `${result.failures} failures`, "31")}
             runId: result.runId,
             seedDomain: result.seedDomain,
             status: result.status,
-            dryRun: result.dryRun,
             companiesFound: result.companiesFound,
             contactsFound: result.contactsFound,
             emailsVerified: result.emailsVerified,

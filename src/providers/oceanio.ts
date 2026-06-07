@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { RateLimiter } from "../utils/rateLimiter.js";
 import type { AppConfig } from "../config/env.js";
 import type { DiscoveredCompany } from "../domain/types.js";
 import { fetchJson } from "../utils/http.js";
@@ -32,6 +33,9 @@ export class OceanIoClient implements CompanyDiscoveryClient {
       }
     };
 
+    // Apply Ocean.io rate limiting (≈55 req/min)
+    const oceanLimiter = new RateLimiter({ maxRequestsPerInterval: 55, intervalMs: 60_000 });
+    await oceanLimiter.limit();
     const response = await fetchJson<unknown>(url.toString(), {
       method: "POST",
       headers: { "x-api-token": this.config.OCEAN_IO_API_KEY },

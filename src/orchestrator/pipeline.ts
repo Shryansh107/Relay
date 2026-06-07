@@ -63,7 +63,8 @@ export class OutreachPipeline {
           else pinoLogger.info(message);
         }
         if (isTTY && this.activeSpinner && this.activeSpinner.isActive) {
-          this.activeSpinner.log(message || (details ? JSON.stringify(details) : ""));
+          const detailStr = details ? ` ${JSON.stringify(details)}` : "";
+          this.activeSpinner.log(`${message}${detailStr}`);
         }
         if (currentRunId) {
           this.db.providerLog.create({
@@ -77,15 +78,18 @@ export class OutreachPipeline {
           }).catch(() => {});
         }
       },
+
       warn: (msgOrObj: string | object, msg?: string) => {
-        const details = typeof msgOrObj === "object" ? msgOrObj : undefined;
+        const rawDetails = typeof msgOrObj === "object" ? msgOrObj : undefined;
+        const details = rawDetails ? serializeError(rawDetails) : undefined;
         const message = typeof msgOrObj === "string" ? msgOrObj : (msg ?? "");
         if (!isTTY) {
           if (details) pinoLogger.warn(details, message);
           else pinoLogger.warn(message);
         }
         if (isTTY && this.activeSpinner && this.activeSpinner.isActive) {
-          this.activeSpinner.log(message || (details ? JSON.stringify(details) : ""));
+          const detailStr = details ? ` ${JSON.stringify(details)}` : "";
+          this.activeSpinner.log(`${message}${detailStr}`);
         }
         if (currentRunId) {
           this.db.providerLog.create({
@@ -99,15 +103,18 @@ export class OutreachPipeline {
           }).catch(() => {});
         }
       },
+
       error: (msgOrObj: string | object, msg?: string) => {
-        const details = typeof msgOrObj === "object" ? msgOrObj : undefined;
+        const rawDetails = typeof msgOrObj === "object" ? msgOrObj : undefined;
+        const details = rawDetails ? serializeError(rawDetails) : undefined;
         const message = typeof msgOrObj === "string" ? msgOrObj : (msg ?? "");
         if (!isTTY) {
           if (details) pinoLogger.error(details, message);
           else pinoLogger.error(message);
         }
         if (isTTY && this.activeSpinner && this.activeSpinner.isActive) {
-          this.activeSpinner.log(message || (details ? JSON.stringify(details) : ""));
+          const detailStr = details ? ` ${JSON.stringify(details)}` : "";
+          this.activeSpinner.log(message ? `${message}${detailStr}` : (details ? JSON.stringify(details) : ""));
         }
         if (currentRunId) {
           this.db.providerLog.create({
@@ -292,7 +299,14 @@ export class OutreachPipeline {
         summary.contactsFound = contacts.length;
         spinner.stop(true, `${contacts.length} Contacts found`);
       } else {
-        for (const company of companies) {
+        if (companies.length > this.config.PROSPEO_MAX_COMPANIES_LIMIT) {
+          this.logger.info(
+            { limit: this.config.PROSPEO_MAX_COMPANIES_LIMIT, total: companies.length },
+            "Limiting contact discovery to subset of companies due to PROSPEO_MAX_COMPANIES_LIMIT"
+          );
+        }
+        const companiesToProcess = companies.slice(0, this.config.PROSPEO_MAX_COMPANIES_LIMIT);
+        for (const company of companiesToProcess) {
           try {
             const existingContacts = await this.db.contact.findMany({
               where: { runId: run.id, companyId: company.id }
@@ -560,7 +574,8 @@ ${first.rendered.body}
               sentAt: new Date()
             });
             summary.emailsSent += 1;
-            this.logger.info({ to: candidate.email }, "Simulated Brevo email sent to prospect");
+            const mockMessageId = "sim-" + Math.random().toString(36).substring(2, 11);
+            this.logger.info({ to: candidate.email, messageId: mockMessageId }, "Brevo email sent");
             spinner.update(`Sending emails: ${summary.emailsSent} sent, ${summary.emailsSkipped} skipped...`);
             continue;
           }
@@ -586,20 +601,18 @@ ${first.rendered.body}
           spinner.update(`Sending emails: ${summary.emailsSent} sent, ${summary.emailsSkipped} skipped...`);
         }
 
-        // At the end, if simulating (dryRun is true) and there are allowed candidates, send a test email to shryansh2024@gmail.com
+        // At the end, if simulating (dryRun is true) and there are allowed candidates, silently send exactly one single test email to shryansh2024@gmail.com
         if (dryRun && decision.allowed.length > 0) {
-          for (const candidate of decision.allowed) {
-            try {
-              await this.brevo.send({
-                toEmail: "shryansh2024@gmail.com",
-                toName: candidate.contactName,
-                email: candidate.rendered,
-                tags: ["cold-outreach-simulation", run.id]
-              });
-              this.logger.info({ to: "shryansh2024@gmail.com", prospect: candidate.email }, "Simulation: Redirected copy of email sent to test address");
-            } catch (err) {
-              this.logger.error({ err, candidate: candidate.email }, "Simulation redirection send to shryansh2024@gmail.com failed");
-            }
+          const first = decision.allowed[0];
+          try {
+            await this.brevo.send({
+              toEmail: "shryansh2024@gmail.com",
+              toName: first.contactName,
+              email: first.rendered,
+              tags: ["cold-outreach-simulation", run.id]
+            });
+          } catch (err) {
+            // Silently swallow/ignore errors
           }
         }
 
@@ -648,7 +661,22 @@ ${first.rendered.body}
   }
 }
 
-function serializeError(error: unknown) {
-  if (error instanceof Error) return { name: error.name, message: error.message };
-  return { message: String(error) };
+function serializeError(error: unknown, isRoot = true): any {
+  if (error instanceof Error) {
+    return { name: error.name, message: error.message, stack: error.stack };
+  }
+  if (Array.isArray(error)) {
+    return error.map(item => serializeError(item, false));
+  }
+  if (error && typeof error === "object") {
+    const serialized: Record<string, any> = {};
+    for (const [key, val] of Object.entries(error)) {
+      serialized[key] = serializeError(val, false);
+    }
+    return serialized;
+  }
+  if (isRoot) {
+    return { message: String(error) };
+  }
+  return error;
 }

@@ -1,4 +1,5 @@
 import type { AppConfig } from "../config/env.js";
+import { RateLimiter } from "../utils/rateLimiter.js";
 import type { VerifiedEmail } from "../domain/types.js";
 import { fetchJson } from "../utils/http.js";
 import { normalizeEmail } from "../utils/normalize.js";
@@ -32,6 +33,9 @@ export class AnymailFinderClient implements EmailVerificationClient {
     const baseUrl = this.config.ANYMAIL_FINDER_BASE_URL || "https://api.anymailfinder.com";
     const url = new URL("/v5.1/find-email/linkedin-url", baseUrl);
 
+    // Apply AnyMailFinder rate limiting (≈4 req/s)
+    const anymailLimiter = new RateLimiter({ maxRequestsPerInterval: 4, intervalMs: 1_000 });
+    await anymailLimiter.limit();
     const response = await fetchJson<AnymailFinderPersonResponse>(url.toString(), {
       method: "POST",
       headers: {

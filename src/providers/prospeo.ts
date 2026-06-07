@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { AppConfig } from "../config/env.js";
+import { RateLimiter } from "../utils/rateLimiter.js";
 import type { DiscoveredContact } from "../domain/types.js";
 import { fetchJson } from "../utils/http.js";
 import { normalizeLinkedInUrl, asString } from "../utils/normalize.js";
@@ -24,20 +25,40 @@ export class ProspeoClient implements ContactDiscoveryClient {
 
   async findDecisionMakers(companyId: string, domain: string): Promise<DiscoveredContact[]> {
     const url = new URL("/search-person", this.config.PROSPEO_BASE_URL);
-    const response = await fetchJson<unknown>(url.toString(), {
-      method: "POST",
-      headers: { "X-KEY": this.config.PROSPEO_API_KEY },
-      body: {
-        page: 1,
-        filters: {
-          company: { websites: { include: [domain] } },
-          person_seniority: { include: targetSeniorities }
+    // Apply Prospeo rate limiting (≈200 req/min) and retry on 429
+    const prospeoLimiter = new RateLimiter({ maxRequestsPerInterval: 200, intervalMs: 60_000 });
+    let response;
+    for (let attempts = 3; attempts > 0; attempts--) {
+      await prospeoLimiter.limit();
+      try {
+        response = await fetchJson<unknown>(url.toString(), {
+          method: "POST",
+          headers: { "X-KEY": this.config.PROSPEO_API_KEY },
+          body: {
+            page: 1,
+            filters: {
+              company: { websites: { include: [domain] } },
+              person_seniority: { include: targetSeniorities }
+            }
+          },
+          timeoutMs: this.config.HTTP_TIMEOUT_MS,
+          retries: this.config.HTTP_RETRIES
+        });
+        break; // success
+      } catch (err: any) {
+        if (err?.response?.status === 429 && attempts > 1) {
+          const retryAfter = Number(err.response.headers?.['retry-after'] ?? 1000);
+          await new Promise(r => setTimeout(r, retryAfter));
+          continue;
         }
-      },
-      timeoutMs: this.config.HTTP_TIMEOUT_MS,
-      retries: this.config.HTTP_RETRIES
-    });
+        throw err;
+      }
+    }
 
+
+    if (!response) {
+      throw new Error("No response received from Prospeo API");
+    }
     const parsed = prospeoResponseSchema.parse(response.data);
     return parsed.results
       .map((result): DiscoveredContact | null => {
