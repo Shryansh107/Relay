@@ -133,9 +133,14 @@ export class Repositories {
     });
   }
 
-  recentMessageForEmail(emailId: string, since: Date) {
+  recentMessageForEmail(emailId: string, since: Date, currentRunId?: string) {
     return this.db.outreachMessage.findFirst({
-      where: { emailId, sentAt: { gte: since }, sendStatus: { in: ["sent", "dry_run"] } }
+      where: {
+        emailId,
+        sentAt: { gte: since },
+        sendStatus: { in: ["sent", "dry_run"] },
+        ...(currentRunId ? { runId: { not: currentRunId } } : {})
+      }
     });
   }
 

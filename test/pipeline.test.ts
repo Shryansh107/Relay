@@ -27,13 +27,14 @@ const mockConfig: AppConfig = {
 
 const mockLogger = pino({ level: "silent" });
 
-// Mock provider API clients
+const mockFindLookalikes = vi.fn().mockResolvedValue([
+  { domain: "lookalike1.com", name: "Lookalike 1", source: "ocean.io", firmographic: {} }
+]);
+
 vi.mock("../src/providers/oceanio.js", () => {
   return {
     OceanIoClient: vi.fn().mockImplementation(() => ({
-      findLookalikes: vi.fn().mockResolvedValue([
-        { domain: "lookalike1.com", name: "Lookalike 1", source: "ocean.io", firmographic: {} }
-      ])
+      findLookalikes: mockFindLookalikes
     }))
   };
 });
@@ -123,7 +124,7 @@ describe("OutreachPipeline Auto-Resume and Spinners", () => {
 
   it("runs the full pipeline from scratch when no active run exists", async () => {
     const pipeline = new OutreachPipeline(mockDb as unknown as PrismaClient, mockConfig, mockLogger);
-    const result = await pipeline.run("seed.com", { skipSafety: true });
+    const result = await pipeline.run("seed.com");
 
     expect(mockDb.run.findFirst).toHaveBeenCalled();
     expect(mockDb.run.create).toHaveBeenCalledWith({
@@ -156,7 +157,7 @@ describe("OutreachPipeline Auto-Resume and Spinners", () => {
     mockDb.company.count.mockResolvedValue(1);
 
     const pipeline = new OutreachPipeline(mockDb as unknown as PrismaClient, mockConfig, mockLogger);
-    const result = await pipeline.run("seed.com", { skipSafety: true });
+    const result = await pipeline.run("seed.com");
 
     // Since it resumed from prospeo, we should not have created a new run, but updated the old one
     expect(mockDb.run.create).not.toHaveBeenCalled();
@@ -177,17 +178,31 @@ describe("OutreachPipeline Auto-Resume and Spinners", () => {
       status: "failed",
       stage: "brevo"
     });
+    mockDb.run.update.mockResolvedValueOnce({
+      id: "run-failed-456",
+      seedDomain: "seed.com",
+      status: "running",
+      stage: "brevo"
+    });
 
-    // Mock that 1 message was already sent in this run
-    mockDb.outreachMessage.findFirst.mockResolvedValueOnce({
-      id: "msg-prev",
-      runId: "run-failed-456",
-      emailId: "email-1",
-      sendStatus: "sent"
+    // Mock that 1 message was already sent in this run, but differentiate between cooldown check and resume check
+    mockDb.outreachMessage.findFirst.mockImplementation(async (args: any) => {
+      if (args?.where?.runId?.not === "run-failed-456") {
+        return null; // Cooldown check: ignore current run
+      }
+      if (args?.where?.runId === "run-failed-456") {
+        return {
+          id: "msg-prev",
+          runId: "run-failed-456",
+          emailId: "email-1",
+          sendStatus: "sent"
+        };
+      }
+      return null;
     });
 
     const pipeline = new OutreachPipeline(mockDb as unknown as PrismaClient, mockConfig, mockLogger);
-    const result = await pipeline.run("seed.com", { skipSafety: true });
+    const result = await pipeline.run("seed.com");
 
     expect(mockDb.outreachMessage.create).not.toHaveBeenCalled();
     expect(result.emailsSent).toBe(1);
@@ -204,7 +219,7 @@ describe("OutreachPipeline Auto-Resume and Spinners", () => {
       mockBrevo as any
     );
 
-    const result = await pipeline.run("seed.com", { skipSafety: true, live: false });
+    const result = await pipeline.run("seed.com", { live: false });
 
     // In simulation mode, we expect to see the UI progress show 1 sent
     expect(result.emailsSent).toBe(1);
@@ -236,7 +251,7 @@ describe("OutreachPipeline Auto-Resume and Spinners", () => {
       mockBrevo as any
     );
 
-    const result = await pipeline.run("seed.com", { skipSafety: true, live: true });
+    const result = await pipeline.run("seed.com", { live: true });
 
     expect(result.emailsSent).toBe(1);
     expect(result.dryRun).toBe(false);
@@ -254,5 +269,24 @@ describe("OutreachPipeline Auto-Resume and Spinners", () => {
         sendStatus: "sent"
       })
     }));
+  });
+
+  it("bypasses DB caching lookup queries when noCache is active", async () => {
+    // First call (activeRun check) returns null.
+    // Second call (previousRun check) returns the completed run.
+    mockDb.run.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        id: "run-prev-123",
+        seedDomain: "seed.com",
+        status: "completed",
+        stage: "completed"
+      });
+
+    const pipeline = new OutreachPipeline(mockDb as unknown as PrismaClient, mockConfig, mockLogger);
+    await pipeline.run("seed.com", { noCache: true });
+
+    // Since noCache is active, we should have made the lookalike API call instead of reading from DB cache
+    expect(mockFindLookalikes).toHaveBeenCalled();
   });
 });

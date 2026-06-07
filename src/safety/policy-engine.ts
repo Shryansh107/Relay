@@ -19,7 +19,7 @@ export type SafetyDecision = {
 export class PolicyEngine {
   constructor(
     private readonly repos: Repositories,
-    private readonly options: { maxSendsPerRun: number; recontactCooldownDays: number }
+    private readonly options: { maxSendsPerRun: number; recontactCooldownDays: number; currentRunId?: string }
   ) {}
 
   async evaluate(candidates: SafetyCandidate[]): Promise<SafetyDecision> {
@@ -39,7 +39,7 @@ export class PolicyEngine {
         blocked.push({ candidate, reason: "Missing subject or body." });
         continue;
       }
-      const recent = await this.repos.recentMessageForEmail(candidate.emailId, since);
+      const recent = await this.repos.recentMessageForEmail(candidate.emailId, since, this.options.currentRunId);
       if (recent) {
         blocked.push({ candidate, reason: "Contacted inside recontact cooldown." });
         continue;

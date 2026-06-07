@@ -16,23 +16,13 @@ program
 program
   .command("run")
   .argument("<company.domain>", "seed company domain")
-  .option("--skip-ocean", "skip Ocean.io company discovery")
-  .option("--skip-prospeo", "skip Prospeo contact discovery")
-  .option("--skip-verification", "skip Anymail Finder email verification")
-  .option("--skip-safety", "skip Safety Gate evaluation")
-  .option("--skip-brevo", "skip Brevo email dispatch")
-  .option("--show-inputs", "show input details passed between stages", false)
   .option("--live", "send real outreach emails instead of simulating", false)
+  .option("--no-cache", "disable reading cached lookup data from previous runs")
   .description("Run the outreach pipeline with one seed domain")
   .allowExcessArguments(false)
   .action(async (domain: string, options: {
-    skipOcean?: boolean;
-    skipProspeo?: boolean;
-    skipVerification?: boolean;
-    skipSafety?: boolean;
-    skipBrevo?: boolean;
-    showInputs?: boolean;
     live?: boolean;
+    cache?: boolean;
   }) => {
     if (process.stdout.isTTY) {
       console.log(`\x1b[36m\x1b[1m
@@ -53,7 +43,10 @@ program
       const config = loadConfig();
       prisma = createPrismaClient(config.DATABASE_URL);
       const pipeline = new OutreachPipeline(prisma, config, logger);
-      const result = await pipeline.run(domain, options);
+      const result = await pipeline.run(domain, {
+        live: options.live,
+        noCache: options.cache === false
+      });
 
       if (process.stdout.isTTY) {
         logger.level = "info";

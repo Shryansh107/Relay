@@ -116,13 +116,8 @@ export class OutreachPipeline {
   async run(
     seedInput: string,
     options?: {
-      skipOcean?: boolean;
-      skipProspeo?: boolean;
-      skipVerification?: boolean;
-      skipSafety?: boolean;
-      skipBrevo?: boolean;
-      showInputs?: boolean;
       live?: boolean;
+      noCache?: boolean;
     }
   ): Promise<PipelineResult> {
     const seedDomain = normalizeDomain(seedInput);
@@ -190,14 +185,9 @@ export class OutreachPipeline {
       failures: 0
     };
 
-    const skipOcean = options?.skipOcean ?? false;
-    const skipProspeo = options?.skipProspeo ?? false;
-    const skipVerification = options?.skipVerification ?? false;
-    const skipSafety = options?.skipSafety ?? false;
-    const skipBrevo = options?.skipBrevo ?? false;
-    const showInputs = options?.showInputs ?? false;
     const live = options?.live ?? false;
     const dryRun = !live;
+    const noCache = options?.noCache ?? false;
 
     // Check which stages are already completed from a resume perspective
     const isOceanCompleted = isResumed && [
@@ -227,7 +217,7 @@ export class OutreachPipeline {
     const maybeDelay = () => isInteractive ? new Promise((resolve) => setTimeout(resolve, 1000)) : Promise.resolve();
 
     try {
-      this.logger.info({ runId: run.id, seedDomain, skipOcean, skipProspeo, skipVerification, skipSafety, skipBrevo }, "Starting outreach pipeline");
+      this.logger.info({ runId: run.id, seedDomain, live, noCache }, "Starting outreach pipeline");
 
       // Stage 1: Ocean.io
       activeStageName = "Company discovery";
@@ -240,29 +230,6 @@ export class OutreachPipeline {
         companies = await this.repos.listRunCompanies(run.id);
         summary.companiesFound = companies.length;
         spinner.stop(true, `${companies.length} Companies loaded (Resumed)`);
-      } else if (skipOcean) {
-        this.logger.info("Skipping Ocean.io company discovery stage.");
-        const previousRun = await this.db.run.findFirst({
-          where: { seedDomain, status: "completed" },
-          orderBy: { startedAt: "desc" }
-        });
-        if (previousRun) {
-          const previousCompanies = await this.db.company.findMany({
-            where: { runId: previousRun.id }
-          });
-          if (previousCompanies.length > 0) {
-            this.logger.info({ previousRunId: previousRun.id, count: previousCompanies.length }, "Copying cached companies from previous run.");
-            const companiesToCopy = previousCompanies.map((c) => ({
-              domain: c.domain,
-              name: c.name ?? undefined,
-              source: c.source as "ocean.io",
-              firmographic: c.firmographicJson ? JSON.parse(c.firmographicJson) : {}
-            }));
-            companies = await this.repos.upsertCompanies(run.id, companiesToCopy);
-          }
-        }
-        summary.companiesFound = companies.length;
-        spinner.stop(true, `${companies.length} Companies copied (Skipped API)`);
       } else {
         const previousRun = await this.db.run.findFirst({
           where: { seedDomain, status: "completed" },
@@ -270,7 +237,7 @@ export class OutreachPipeline {
         });
 
         let discoveredCompanies: DiscoveredCompany[] = [];
-        if (previousRun) {
+        if (previousRun && !noCache) {
           const previousCompanies = await this.db.company.findMany({
             where: { runId: previousRun.id }
           });
@@ -308,47 +275,10 @@ export class OutreachPipeline {
       spinner.start("Discovering contacts...");
       await maybeDelay();
       await this.repos.updateRun(run.id, { stage: "prospeo" });
-      if (showInputs) {
-        this.logger.info({ companies: companies.map((c) => c.domain) }, "Entering Prospeo stage. Ocean companies list:");
-      }
-
       if (isProspeoCompleted) {
         const contacts = await this.repos.listRunContacts(run.id);
         summary.contactsFound = contacts.length;
         spinner.stop(true, `${contacts.length} Contacts loaded (Resumed)`);
-      } else if (skipProspeo) {
-        this.logger.info("Skipping Prospeo contact discovery stage.");
-        const previousRun = await this.db.run.findFirst({
-          where: { seedDomain, status: "completed" },
-          orderBy: { startedAt: "desc" }
-        });
-        if (previousRun) {
-          const previousContacts = await this.db.contact.findMany({
-            where: { runId: previousRun.id },
-            include: { company: true }
-          });
-          if (previousContacts.length > 0) {
-            this.logger.info({ count: previousContacts.length }, "Copying cached contacts from previous run.");
-            const currentCompanies = await this.repos.listRunCompanies(run.id);
-            const companyMap = new Map(currentCompanies.map((c) => [c.domain, c.id]));
-            const contactsToCopy = previousContacts
-              .map((c) => {
-                const companyId = companyMap.get(c.company.domain);
-                if (!companyId) return null;
-                return {
-                  companyId,
-                  fullName: c.fullName,
-                  title: c.title ?? undefined,
-                  linkedinUrl: c.linkedinUrl,
-                  seniority: c.seniority ?? undefined
-                };
-              })
-              .filter((c): c is NonNullable<typeof c> => c !== null);
-            const saved = await this.repos.upsertContacts(run.id, contactsToCopy);
-            summary.contactsFound = saved.length;
-          }
-        }
-        spinner.stop(true, `${summary.contactsFound} Contacts copied (Skipped API)`);
       } else {
         for (const company of companies) {
           try {
@@ -366,9 +296,9 @@ export class OutreachPipeline {
                 seniority: c.seniority ?? undefined
               }));
             } else {
-              const previousContacts = await this.db.contact.findMany({
+              const previousContacts = !noCache ? await this.db.contact.findMany({
                 where: { company: { domain: company.domain } }
-              });
+              }) : [];
 
               if (previousContacts.length > 0) {
                 this.logger.info({ domain: company.domain, count: previousContacts.length }, "Prospeo: Found cached contacts. Skipping API call.");
@@ -419,54 +349,12 @@ export class OutreachPipeline {
       spinner.start("Verifying email addresses...");
       await maybeDelay();
       await this.repos.updateRun(run.id, { stage: "anymailfinder" });
-      if (showInputs) {
-        const currentCompanies = await this.repos.listRunCompanies(run.id);
-        const currentContacts = await this.repos.listRunContacts(run.id);
-        this.logger.info({ companies: currentCompanies.map((c) => c.domain) }, "Entering Anymail Finder stage. Ocean companies list:");
-        this.logger.info({ contacts: currentContacts.map((c) => `${c.fullName} (${c.company.domain}) - ${c.linkedinUrl}`) }, "Prospeo contacts list:");
-      }
-
       if (isAnymailFinderCompleted) {
         const verifiedEmails = await this.repos.listEligibleEmails(run.id);
         summary.emailsVerified = verifiedEmails.length;
         spinner.stop(true, `${verifiedEmails.length} Emails verified (Resumed)`);
-      } else if (skipVerification) {
-        this.logger.info("Skipping Anymail Finder email verification stage.");
-        const previousRun = await this.db.run.findFirst({
-          where: { seedDomain, status: "completed" },
-          orderBy: { startedAt: "desc" }
-        });
-        if (previousRun) {
-          const previousEmails = await this.db.email.findMany({
-            where: { contact: { runId: previousRun.id } },
-            include: { contact: true }
-          });
-          if (previousEmails.length > 0) {
-            this.logger.info({ count: previousEmails.length }, "Copying verified emails from previous run.");
-            const currentContacts = await this.repos.listRunContacts(run.id);
-            const contactMap = new Map(currentContacts.map((c) => [c.linkedinUrl, c.id]));
-            const emailsToCopy = previousEmails
-              .map((e) => {
-                const contactId = contactMap.get(e.contact.linkedinUrl);
-                if (!contactId) return null;
-                return {
-                  contactId,
-                  email: e.email,
-                  verificationStatus: e.verificationStatus,
-                  provider: e.provider as "anymailfinder",
-                  confidence: e.confidence ?? undefined,
-                  providerJson: e.providerJson ? JSON.parse(e.providerJson) : {}
-                };
-              })
-              .filter((e): e is NonNullable<typeof e> => e !== null);
-            const saved = await this.repos.upsertEmails(emailsToCopy);
-            summary.emailsVerified = saved.length;
-          }
-        }
-        spinner.stop(true, `${summary.emailsVerified} Emails verified (Skipped API)`);
       } else {
-        const contacts = await this.repos.listRunContacts(run.id);
-        const targetContacts = contacts.slice(0, 5);
+        const targetContacts = await this.repos.listRunContacts(run.id);
 
         for (const contact of targetContacts) {
           try {
@@ -486,9 +374,9 @@ export class OutreachPipeline {
                 providerJson: existingEmail.providerJson ? JSON.parse(existingEmail.providerJson) : {}
               };
             } else {
-              const previousEmail = await this.db.email.findFirst({
+              const previousEmail = !noCache ? await this.db.email.findFirst({
                 where: { contact: { linkedinUrl: contact.linkedinUrl } }
-              });
+              }) : null;
 
               if (previousEmail) {
                 this.logger.info({ contact: contact.fullName, email: previousEmail.email }, `${previousEmail.provider}: Found cached email. Skipping API call.`);
@@ -551,9 +439,6 @@ export class OutreachPipeline {
       await maybeDelay();
       await this.repos.updateRun(run.id, { stage: "safety_gate" });
       const emailRecords = await this.repos.listEligibleEmails(run.id);
-      if (showInputs) {
-        this.logger.info({ emails: emailRecords.map((e) => `${e.contact.fullName}: ${e.email}`) }, "Entering Safety Gate stage. Anymail Finder verified emails list:");
-      }
       const candidates: SafetyCandidate[] = emailRecords.map((record) => ({
         emailId: record.id,
         email: record.email,
@@ -562,25 +447,16 @@ export class OutreachPipeline {
         rendered: renderEmail({ seedDomain, contact: record.contact, config: this.config })
       }));
 
-      let decision: SafetyDecision;
-      if (skipSafety) {
-        this.logger.info("Skipping Safety Gate evaluation.");
-        decision = {
-          allowed: candidates,
-          blocked: [],
-          abortReasons: []
-        };
-      } else {
-        this.logger.info(
-          { wouldSend: candidates.length, dryRun: this.config.DEFAULT_DRY_RUN },
-          "Safety gate evaluating outbound batch"
-        );
-        const policy = new PolicyEngine(this.repos, {
-          maxSendsPerRun: this.config.MAX_SENDS_PER_RUN,
-          recontactCooldownDays: this.config.RECONTACT_COOLDOWN_DAYS
-        });
-        decision = await policy.evaluate(candidates);
-      }
+      this.logger.info(
+        { wouldSend: candidates.length, dryRun: this.config.DEFAULT_DRY_RUN },
+        "Safety gate evaluating outbound batch"
+      );
+      const policy = new PolicyEngine(this.repos, {
+        maxSendsPerRun: this.config.MAX_SENDS_PER_RUN,
+        recontactCooldownDays: this.config.RECONTACT_COOLDOWN_DAYS,
+        currentRunId: run.id
+      });
+      const decision = await policy.evaluate(candidates);
 
       spinner.stop(true, `Safety gate passed: ${decision.allowed.length} allowed, ${decision.blocked.length} blocked`);
 
@@ -588,107 +464,96 @@ export class OutreachPipeline {
         summary.emailsSkipped += candidates.length;
         this.logger.warn({ reasons: decision.abortReasons }, "Safety gate aborted sending");
       } else {
-        if (skipBrevo) {
-          this.logger.info("Skipping Brevo email dispatch stage.");
-          summary.emailsSkipped += decision.allowed.length;
-          for (const blocked of decision.blocked) {
-            summary.emailsSkipped += 1;
-          }
-        } else {
-          // Stage 5: Brevo
-          activeStageName = "Email dispatch";
-          spinner.start("Sending emails...");
-          await maybeDelay();
-          await this.repos.updateRun(run.id, { stage: "brevo" });
-          if (showInputs) {
-            this.logger.info({ allowed: decision.allowed.map((c) => `${c.contactName}: ${c.email}`) }, "Entering Brevo email dispatch stage. Allowed candidates list:");
-          }
+        // Stage 5: Brevo
+        activeStageName = "Email dispatch";
+        spinner.start("Sending emails...");
+        await maybeDelay();
+        await this.repos.updateRun(run.id, { stage: "brevo" });
 
-          // Reset Brevo summary counters for this specific run execution to prevent double counting
-          summary.emailsSent = 0;
-          summary.emailsSkipped = 0;
+        // Reset Brevo summary counters for this specific run execution to prevent double counting
+        summary.emailsSent = 0;
+        summary.emailsSkipped = 0;
 
-          for (const candidate of decision.allowed) {
-            const bodyHash = sha256(candidate.rendered.body);
+        for (const candidate of decision.allowed) {
+          const bodyHash = sha256(candidate.rendered.body);
 
-            // Resume check: check if already sent/processed in this run
-            const existingMessage = await this.db.outreachMessage.findFirst({
-              where: { runId: run.id, emailId: candidate.emailId }
-            });
+          // Resume check: check if already sent/processed in this run
+          const existingMessage = await this.db.outreachMessage.findFirst({
+            where: { runId: run.id, emailId: candidate.emailId }
+          });
 
-            if (existingMessage) {
-              if (existingMessage.sendStatus === "sent") {
-                summary.emailsSent += 1;
-                this.logger.info({ to: candidate.email }, "Brevo email already sent in a previous attempt. Skipping.");
-              } else {
-                summary.emailsSkipped += 1;
-                this.logger.info({ to: candidate.email }, "Brevo email already processed as dry_run/skipped in a previous attempt. Skipping.");
-              }
-              spinner.update(`Sending emails: ${summary.emailsSent} sent, ${summary.emailsSkipped} skipped...`);
-              continue;
-            }
-
-            if (dryRun) {
-              await this.repos.createMessage({
-                runId: run.id,
-                contactId: candidate.contactId,
-                emailId: candidate.emailId,
-                subject: candidate.rendered.subject,
-                bodyHash,
-                sendStatus: "dry_run",
-                sentAt: new Date()
-              });
+          if (existingMessage) {
+            if (existingMessage.sendStatus === "sent") {
               summary.emailsSent += 1;
-              this.logger.info({ to: candidate.email }, "Simulated Brevo email sent to prospect");
-              spinner.update(`Sending emails: ${summary.emailsSent} sent, ${summary.emailsSkipped} skipped...`);
-              continue;
+              this.logger.info({ to: candidate.email }, "Brevo email already sent in a previous attempt. Skipping.");
+            } else {
+              summary.emailsSkipped += 1;
+              this.logger.info({ to: candidate.email }, "Brevo email already processed as dry_run/skipped in a previous attempt. Skipping.");
             }
+            spinner.update(`Sending emails: ${summary.emailsSent} sent, ${summary.emailsSkipped} skipped...`);
+            continue;
+          }
 
-            const sent = await this.brevo.send({
-              toEmail: candidate.email,
-              toName: candidate.contactName,
-              email: candidate.rendered,
-              tags: ["cold-outreach", run.id]
-            });
+          if (dryRun) {
             await this.repos.createMessage({
               runId: run.id,
               contactId: candidate.contactId,
               emailId: candidate.emailId,
               subject: candidate.rendered.subject,
               bodyHash,
-              sendStatus: "sent",
-              providerMessageId: sent.messageId,
+              sendStatus: "dry_run",
               sentAt: new Date()
             });
             summary.emailsSent += 1;
-            this.logger.info({ to: candidate.email, messageId: sent.messageId }, "Brevo email sent");
+            this.logger.info({ to: candidate.email }, "Simulated Brevo email sent to prospect");
             spinner.update(`Sending emails: ${summary.emailsSent} sent, ${summary.emailsSkipped} skipped...`);
+            continue;
           }
 
-          // At the end, if simulating (dryRun is true) and there are allowed candidates, send a test email to shryansh2024@gmail.com
-          if (dryRun && decision.allowed.length > 0) {
-            for (const candidate of decision.allowed) {
-              try {
-                await this.brevo.send({
-                  toEmail: "shryansh2024@gmail.com",
-                  toName: candidate.contactName,
-                  email: candidate.rendered,
-                  tags: ["cold-outreach-simulation", run.id]
-                });
-                this.logger.info({ to: "shryansh2024@gmail.com", prospect: candidate.email }, "Simulation: Redirected copy of email sent to test address");
-              } catch (err) {
-                this.logger.error({ err, candidate: candidate.email }, "Simulation redirection send to shryansh2024@gmail.com failed");
-              }
+          const sent = await this.brevo.send({
+            toEmail: candidate.email,
+            toName: candidate.contactName,
+            email: candidate.rendered,
+            tags: ["cold-outreach", run.id]
+          });
+          await this.repos.createMessage({
+            runId: run.id,
+            contactId: candidate.contactId,
+            emailId: candidate.emailId,
+            subject: candidate.rendered.subject,
+            bodyHash,
+            sendStatus: "sent",
+            providerMessageId: sent.messageId,
+            sentAt: new Date()
+          });
+          summary.emailsSent += 1;
+          this.logger.info({ to: candidate.email, messageId: sent.messageId }, "Brevo email sent");
+          spinner.update(`Sending emails: ${summary.emailsSent} sent, ${summary.emailsSkipped} skipped...`);
+        }
+
+        // At the end, if simulating (dryRun is true) and there are allowed candidates, send a test email to shryansh2024@gmail.com
+        if (dryRun && decision.allowed.length > 0) {
+          for (const candidate of decision.allowed) {
+            try {
+              await this.brevo.send({
+                toEmail: "shryansh2024@gmail.com",
+                toName: candidate.contactName,
+                email: candidate.rendered,
+                tags: ["cold-outreach-simulation", run.id]
+              });
+              this.logger.info({ to: "shryansh2024@gmail.com", prospect: candidate.email }, "Simulation: Redirected copy of email sent to test address");
+            } catch (err) {
+              this.logger.error({ err, candidate: candidate.email }, "Simulation redirection send to shryansh2024@gmail.com failed");
             }
           }
-
-          for (const blocked of decision.blocked) {
-            summary.emailsSkipped += 1;
-            this.logger.warn({ to: blocked.candidate.email, reason: blocked.reason }, "Safety gate blocked contact");
-          }
-
-          spinner.stop(true, `Outreach complete: ${summary.emailsSent} sent, ${summary.emailsSkipped} skipped`);
         }
+
+        for (const blocked of decision.blocked) {
+          summary.emailsSkipped += 1;
+          this.logger.warn({ to: blocked.candidate.email, reason: blocked.reason }, "Safety gate blocked contact");
+        }
+
+        spinner.stop(true, `Outreach complete: ${summary.emailsSent} sent, ${summary.emailsSkipped} skipped`);
       }
 
       const result: PipelineResult = {
