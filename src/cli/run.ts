@@ -33,6 +33,9 @@ program
     showInputs?: boolean;
   }) => {
     const logger = createLogger();
+    if (process.stdout.isTTY) {
+      logger.level = "warn";
+    }
     let prisma: ReturnType<typeof createPrismaClient> | undefined;
     try {
       const config = loadConfig();
@@ -40,6 +43,9 @@ program
       const pipeline = new OutreachPipeline(prisma, config, logger);
       const result = await pipeline.run(domain, options);
 
+      if (process.stdout.isTTY) {
+        logger.level = "info";
+      }
       logger.info(
         {
           runId: result.runId,
@@ -56,6 +62,9 @@ program
         "Pipeline summary"
       );
     } catch (error) {
+      if (process.stdout.isTTY) {
+        logger.level = "info";
+      }
       logger.error({ err: error }, "Command failed");
       process.exitCode = 1;
     } finally {

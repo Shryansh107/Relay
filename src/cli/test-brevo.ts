@@ -19,8 +19,6 @@ program
 
       const testEmails = [
         "shryansh2024@gmail.com",
-        "shryansh2016@gmail.com",
-        "shryansh2018@gmail.com"
       ];
 
       const mockContact = {

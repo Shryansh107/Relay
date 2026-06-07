@@ -11,7 +11,7 @@ export class Repositories {
     });
   }
 
-  updateRun(id: string, data: { status?: string; stage?: string; summaryJson?: string; endedAt?: Date }) {
+  updateRun(id: string, data: { status?: string; stage?: string; summaryJson?: string; endedAt?: Date | null }) {
     return this.db.run.update({ where: { id }, data });
   }
 
