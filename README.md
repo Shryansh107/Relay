@@ -4,15 +4,12 @@ An automated, end-to-end cold-outreach command-line pipeline that takes a single
 
 ## Project Description
 
-The pipeline automates target company discovery, contact prospecting, email resolution, safety gate validation, and email dispatch in a modular, zero-interaction flow:
+This is an automated cold-outreach assistant that automates the process of finding lookalike companies, identifying key decision-makers, resolving contact details, validating safety and cooldown rules, and dispatching personalized outbound emails:
 
-1. **Ocean.io**: Finds similar lookalike companies based on the seed domain.
-2. **Prospeo**: Discovers senior decision-makers (C-suite & VP level) at the lookalike companies.
-3. **Anymail Finder**: Resolves and verifies professional email addresses for each contact.
-4. **Safety Gate**: Evaluates deduplication rules, suppression list cooldowns, and send limits before dispatching.
-5. **Brevo**: Renders personalized templates via Handlebars and dispatches outreach emails.
-
-All results are cached in a local SQLite database, allowing subsequent pipeline runs to run instantly by reusing cached entities.
+1. **Discover Similar Companies**: Finds companies that are similar to a given target company.
+2. **Find Decision-Makers**: Identifies senior people (such as executives and managers) working at those discovered companies.
+3. **Resolve Verified Emails**: Searches for and validates the professional email addresses of those contacts.
+4. **Send Personalized Emails**: Generates custom email copies tailored to each recipient and dispatches them automatically.
 
 ---
 
