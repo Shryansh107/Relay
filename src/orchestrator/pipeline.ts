@@ -13,6 +13,7 @@ import { renderEmail } from "../templates/render.js";
 import { sha256 } from "../utils/hash.js";
 import { normalizeDomain } from "../utils/normalize.js";
 import { Spinner } from "../utils/spinner.js";
+import readline from "readline/promises";
 
 export type PipelineResult = StageSummary & {
   runId: string;
@@ -475,6 +476,49 @@ export class OutreachPipeline {
         summary.emailsSkipped += candidates.length;
         this.logger.warn({ reasons: decision.abortReasons }, "Safety gate aborted sending");
       } else {
+        if (isInteractive && decision.allowed.length > 0) {
+          const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+          await rl.question("\n\x1b[1mPress Enter to review sample email preview...\x1b[0m");
+          
+          const first = decision.allowed[0];
+          console.log(`
+\x1b[36m┌────────────────────────────────────────────────────────┐
+│\x1b[0m                   \x1b[1mSAMPLE EMAIL PREVIEW\x1b[0m                  \x1b[36m│
+└────────────────────────────────────────────────────────┘\x1b[0m
+\x1b[1mTo:\x1b[0m      ${first.email} (${first.contactName})
+\x1b[1mSubject:\x1b[0m ${first.rendered.subject}
+\x1b[1mBody:\x1b[0m
+${first.rendered.body}
+\x1b[36m──────────────────────────────────────────────────────────\x1b[0m
+`);
+          
+          const answer = await rl.question("\x1b[1mSend email to all the contacts found Y,n: \x1b[0m");
+          rl.close();
+          
+          if (answer.trim().toLowerCase() === "n") {
+            this.logger.info("Outreach sending aborted by user.");
+            summary.emailsSkipped += decision.allowed.length;
+            for (const blocked of decision.blocked) {
+              summary.emailsSkipped += 1;
+            }
+            const result: PipelineResult = {
+              runId: run.id,
+              seedDomain,
+              status: "completed",
+              dryRun: dryRun,
+              ...summary
+            };
+            await this.repos.updateRun(run.id, {
+              status: "completed",
+              stage: "completed",
+              summaryJson: JSON.stringify(result),
+              endedAt: new Date()
+            });
+            this.activeSpinner = null;
+            return result;
+          }
+        }
+
         // Stage 5: Brevo
         activeStageName = "Email dispatch";
         spinner.start("Sending emails...");
