@@ -235,8 +235,8 @@ code {
 
 .hero-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.75fr);
-  gap: 56px;
+  grid-template-columns: minmax(0, 0.92fr) minmax(420px, 1fr);
+  gap: 42px;
   align-items: center;
 }
 
@@ -258,9 +258,9 @@ p {
 }
 
 h1 {
-  max-width: 790px;
+  max-width: 680px;
   margin-bottom: 24px;
-  font-size: 6.75rem;
+  font-size: 4.7rem;
   font-weight: 650;
   line-height: 0.95;
   letter-spacing: 0;
@@ -445,10 +445,19 @@ h3 {
   padding: 18px;
 }
 
+.hero-video-card {
+  padding: 12px;
+  pointer-events: none;
+}
+
+.hero-video-card:hover {
+  transform: none;
+}
+
 .terminal-bar {
   display: flex;
   gap: 7px;
-  margin-bottom: 18px;
+  margin-bottom: 12px;
 }
 
 .terminal-bar span {
@@ -464,6 +473,18 @@ h3 {
   line-height: 1.7;
 }
 
+.hero-demo-video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 0;
+  border-radius: 10px;
+  object-fit: contain;
+  background: #020203;
+  pointer-events: none;
+  user-select: none;
+}
+
 .section {
   padding: 112px 0;
   border-top: 1px solid var(--border-default);
@@ -477,12 +498,13 @@ h3 {
   padding: 10px;
 }
 
-.video-shell video {
+.video-shell iframe {
   display: block;
   width: 100%;
-  max-height: 720px;
+  aspect-ratio: 16 / 9;
+  border: 0;
   border-radius: 10px;
-  background: #000;
+  background: #020203;
 }
 
 .pipeline-grid {
@@ -697,7 +719,7 @@ h3 {
 
 @media (max-width: 920px) {
   h1 {
-    font-size: 5rem;
+    font-size: 3.65rem;
   }
 
   h2 {
@@ -711,6 +733,10 @@ h3 {
   .hero-grid {
     grid-template-columns: 1fr;
     gap: 32px;
+  }
+
+  .hero-copy {
+    max-width: 760px;
   }
 
   .pipeline-grid,
@@ -789,7 +815,7 @@ h3 {
   }
 
   h1 {
-    font-size: 3.15rem;
+    font-size: 2.45rem;
   }
 
   h2 {

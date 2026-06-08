@@ -36,7 +36,7 @@
         <a href="#pipeline">Pipeline</a>
         <a href="#architecture">Architecture</a>
         <a href="#usage">Usage</a>
-        <a class="nav-cta" href="https://github.com/Shryansh107/outreach-assistant">GitHub</a>
+        <a class="nav-cta" href="https://github.com/Shryansh107/outreach-assistant" target="_blank" rel="noopener noreferrer">GitHub</a>
       </nav>
     </header>
 
@@ -52,29 +52,19 @@
             </p>
             <div class="hero-actions">
               <a class="button primary" href="#demo">Watch Demo</a>
-              <a class="button secondary" href="https://github.com/Shryansh107/outreach-assistant">View GitHub</a>
+              <a class="button secondary" href="https://github.com/Shryansh107/outreach-assistant" target="_blank" rel="noopener noreferrer">View GitHub</a>
             </div>
           </div>
 
-          <aside class="terminal-card spotlight reveal" aria-label="Relay command summary">
+          <aside class="terminal-card hero-video-card reveal" aria-label="Relay demo preview">
             <div class="terminal-bar">
               <span></span>
               <span></span>
               <span></span>
             </div>
-            <pre><code>$ npm run relay -- run stripe.com
-
-Discovering similar companies... done
-Discovering contacts... done
-Verifying email addresses... done
-Running safety gate... passed
-
-RELAY RUN SUMMARY
-Companies: 20 found
-Contacts: 42 found
-Emails: 14 verified
-Sent: 5 dry_run
-Skipped: 0</code></pre>
+            <video class="hero-demo-video" autoplay muted loop playsinline preload="metadata" aria-label="Relay CLI demo preview">
+              <source src="assets/video.webm" type="video/webm" />
+            </video>
           </aside>
         </div>
       </section>
@@ -91,10 +81,13 @@ Skipped: 0</code></pre>
           </div>
 
           <div class="video-shell spotlight reveal">
-            <video controls preload="metadata" poster="">
-              <source src="assets/video.webm" type="video/webm" />
-              Your browser does not support the video tag.
-            </video>
+            <iframe
+              src="https://www.youtube.com/embed/zbJQ1zPcTPk"
+              title="Relay project demo"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerpolicy="strict-origin-when-cross-origin"
+              allowfullscreen
+            ></iframe>
           </div>
         </div>
       </section>
@@ -186,10 +179,10 @@ Skipped: 0</code></pre>
           </div>
 
           <div class="code-map reveal">
-            <a href="https://github.com/Shryansh107/outreach-assistant/blob/main/src/cli/run.ts">src/cli/run.ts</a>
-            <a href="https://github.com/Shryansh107/outreach-assistant/blob/main/src/orchestrator/pipeline.ts">src/orchestrator/pipeline.ts</a>
-            <a href="https://github.com/Shryansh107/outreach-assistant/blob/main/src/safety/policy-engine.ts">src/safety/policy-engine.ts</a>
-            <a href="https://github.com/Shryansh107/outreach-assistant/blob/main/prisma/schema.prisma">prisma/schema.prisma</a>
+            <a href="https://github.com/Shryansh107/outreach-assistant/blob/main/src/cli/run.ts" target="_blank" rel="noopener noreferrer">src/cli/run.ts</a>
+            <a href="https://github.com/Shryansh107/outreach-assistant/blob/main/src/orchestrator/pipeline.ts" target="_blank" rel="noopener noreferrer">src/orchestrator/pipeline.ts</a>
+            <a href="https://github.com/Shryansh107/outreach-assistant/blob/main/src/safety/policy-engine.ts" target="_blank" rel="noopener noreferrer">src/safety/policy-engine.ts</a>
+            <a href="https://github.com/Shryansh107/outreach-assistant/blob/main/prisma/schema.prisma" target="_blank" rel="noopener noreferrer">prisma/schema.prisma</a>
           </div>
         </div>
       </section>
@@ -236,9 +229,9 @@ npm run prisma:push</code></pre>
       <div class="container footer-inner">
         <p>Relay: automated cold-outreach pipeline.</p>
         <div class="footer-links">
-          <a href="https://github.com/Shryansh107/outreach-assistant">GitHub</a>
-          <a href="https://github.com/Shryansh107/outreach-assistant/blob/main/README.md">README</a>
-          <a href="https://github.com/Shryansh107/outreach-assistant/blob/main/architectural.md">Architecture</a>
+          <a href="https://github.com/Shryansh107/outreach-assistant" target="_blank" rel="noopener noreferrer">GitHub</a>
+          <a href="https://github.com/Shryansh107/outreach-assistant/blob/main/README.md" target="_blank" rel="noopener noreferrer">README</a>
+          <a href="https://github.com/Shryansh107/outreach-assistant/blob/main/architectural.md" target="_blank" rel="noopener noreferrer">Architecture</a>
           <a href="assets/video.webm">Video File</a>
         </div>
       </div>
