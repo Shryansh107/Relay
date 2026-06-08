@@ -2,7 +2,7 @@
 
 An automated, end-to-end cold-outreach CLI  that takes a single seed `company.domain` input and runs a multi-stage outreach campaign autonomously on its lookalike companies.
 
-<video src="assets/video.webm" width="100%" autoplay loop muted playsinline></video>
+[video.webm](https://github.com/user-attachments/assets/795a40f9-cd27-4160-a1fd-cf2d60776051)
 
 ## Project Description
 
