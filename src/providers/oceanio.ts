@@ -21,6 +21,8 @@ const oceanCompanySchema = z.object({
     .default([])
 });
 
+import { RATE_LIMITS } from "../config/constants.js";
+
 export class OceanIoClient implements CompanyDiscoveryClient {
   constructor(private readonly config: AppConfig) {}
 
@@ -34,7 +36,10 @@ export class OceanIoClient implements CompanyDiscoveryClient {
     };
 
     // Apply Ocean.io rate limiting (≈55 req/min)
-    const oceanLimiter = new RateLimiter({ maxRequestsPerInterval: 55, intervalMs: 60_000 });
+    const oceanLimiter = new RateLimiter({
+      maxRequestsPerInterval: RATE_LIMITS.OCEAN_IO.maxRequestsPerInterval,
+      intervalMs: RATE_LIMITS.OCEAN_IO.intervalMs
+    });
     await oceanLimiter.limit();
     const response = await fetchJson<unknown>(url, {
       method: "POST",

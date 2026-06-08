@@ -4,6 +4,7 @@ import type { VerifiedEmail } from "../domain/types.js";
 import { fetchJson } from "../utils/http.js";
 import { normalizeEmail } from "../utils/normalize.js";
 import type { EmailVerificationClient } from "./types.js";
+import { RATE_LIMITS } from "../config/constants.js";
 
 interface AnymailFinderPersonResponse {
   credits_charged: number;
@@ -33,7 +34,10 @@ export class AnymailFinderClient implements EmailVerificationClient {
     const url = "https://api.anymailfinder.com/v5.1/find-email/linkedin-url";
 
     // Apply AnyMailFinder rate limiting (≈4 req/s)
-    const anymailLimiter = new RateLimiter({ maxRequestsPerInterval: 4, intervalMs: 1_000 });
+    const anymailLimiter = new RateLimiter({
+      maxRequestsPerInterval: RATE_LIMITS.ANYMAIL_FINDER.maxRequestsPerInterval,
+      intervalMs: RATE_LIMITS.ANYMAIL_FINDER.intervalMs
+    });
     await anymailLimiter.limit();
     const response = await fetchJson<AnymailFinderPersonResponse>(url, {
       method: "POST",

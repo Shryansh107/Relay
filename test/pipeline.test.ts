@@ -3,6 +3,7 @@ import { OutreachPipeline } from "../src/orchestrator/pipeline.js";
 import type { PrismaClient } from "@prisma/client";
 import type { AppConfig } from "../src/config/env.js";
 import pino from "pino";
+import { SIMULATION_RECIPIENT_EMAIL } from "../src/config/constants.js";
 
 const mockConfig: AppConfig = {
   DATABASE_URL: "file:./data/outreach.db",
@@ -204,7 +205,7 @@ describe("OutreachPipeline Auto-Resume and Spinners", () => {
     expect(result.emailsSent).toBe(1);
   });
 
-  it("redirects outreach emails to shryansh2024@gmail.com in simulation (dry-run) mode", async () => {
+  it(`redirects outreach emails to ${SIMULATION_RECIPIENT_EMAIL} in simulation (dry-run) mode`, async () => {
     const mockBrevo = {
       send: vi.fn().mockResolvedValue({ messageId: "msg-simulated" })
     };
@@ -221,10 +222,10 @@ describe("OutreachPipeline Auto-Resume and Spinners", () => {
     expect(result.emailsSent).toBe(1);
     expect(result.dryRun).toBe(true);
 
-    // And we expect mockBrevo.send to have been called with shryansh2024@gmail.com
+    // And we expect mockBrevo.send to have been called with SIMULATION_RECIPIENT_EMAIL
     expect(mockBrevo.send).toHaveBeenCalledTimes(1);
     expect(mockBrevo.send).toHaveBeenCalledWith(expect.objectContaining({
-      toEmail: "shryansh2024@gmail.com",
+      toEmail: SIMULATION_RECIPIENT_EMAIL,
       toName: "Alice Smith"
     }));
 

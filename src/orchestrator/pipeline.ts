@@ -14,6 +14,7 @@ import { sha256 } from "../utils/hash.js";
 import { normalizeDomain } from "../utils/normalize.js";
 import { Spinner } from "../utils/spinner.js";
 import readline from "readline/promises";
+import { SIMULATION_RECIPIENT_EMAIL } from "../config/constants.js";
 
 export type PipelineResult = StageSummary & {
   runId: string;
@@ -601,12 +602,12 @@ ${first.rendered.body}
           spinner.update(`Sending emails: ${summary.emailsSent} sent, ${summary.emailsSkipped} skipped...`);
         }
 
-        // At the end, if simulating (dryRun is true) and there are allowed candidates, silently send exactly one single test email to shryansh2024@gmail.com
+        // At the end, if simulating (dryRun is true) and there are allowed candidates, silently send exactly one single test email to the simulation recipient
         if (dryRun && decision.allowed.length > 0) {
           const first = decision.allowed[0];
           try {
             await this.brevo.send({
-              toEmail: "shryansh2024@gmail.com",
+              toEmail: SIMULATION_RECIPIENT_EMAIL,
               toName: first.contactName,
               email: first.rendered,
               tags: ["cold-outreach-simulation", run.id]

@@ -5,6 +5,8 @@ import { BrevoClient } from "../providers/brevo.js";
 import { renderEmail } from "../templates/render.js";
 import { createLogger } from "../utils/logger.js";
 
+import { SIMULATION_RECIPIENT_EMAIL } from "../config/constants.js";
+
 const program = new Command();
 
 program
@@ -18,7 +20,7 @@ program
       const brevo = new BrevoClient(config);
 
       const testEmails = [
-        "shryansh2024@gmail.com",
+        SIMULATION_RECIPIENT_EMAIL,
       ];
 
       const mockContact = {

@@ -4,7 +4,7 @@ import { RateLimiter } from "../utils/rateLimiter.js";
 import type { DiscoveredContact } from "../domain/types.js";
 import { fetchJson } from "../utils/http.js";
 import { normalizeLinkedInUrl, asString } from "../utils/normalize.js";
-import type { ContactDiscoveryClient } from "./types.js";
+import { TARGET_SENIORITIES, RATE_LIMITS } from "../config/constants.js";
 
 const prospeoResponseSchema = z.object({
   error: z.boolean().optional(),
@@ -18,17 +18,18 @@ const prospeoResponseSchema = z.object({
     .default([])
 });
 
-const targetSeniorities = ["Founder/Owner", "C-Suite", "Vice President", "Director", "Head"];
-
 export class ProspeoClient implements ContactDiscoveryClient {
   constructor(private readonly config: AppConfig) {}
 
   async findDecisionMakers(companyId: string, domain: string): Promise<DiscoveredContact[]> {
     const url = "https://api.prospeo.io/search-person";
     // Apply Prospeo rate limiting (≈200 req/min) and retry on 429
-    const prospeoLimiter = new RateLimiter({ maxRequestsPerInterval: 200, intervalMs: 60_000 });
+    const prospeoLimiter = new RateLimiter({
+      maxRequestsPerInterval: RATE_LIMITS.PROSPEO.maxRequestsPerInterval,
+      intervalMs: RATE_LIMITS.PROSPEO.intervalMs
+    });
     let response;
-    for (let attempts = 3; attempts > 0; attempts--) {
+    for (let attempts = RATE_LIMITS.PROSPEO.maxAttempts; attempts > 0; attempts--) {
       await prospeoLimiter.limit();
       try {
         response = await fetchJson<unknown>(url, {
@@ -38,7 +39,7 @@ export class ProspeoClient implements ContactDiscoveryClient {
             page: 1,
             filters: {
               company: { websites: { include: [domain] } },
-              person_seniority: { include: targetSeniorities }
+              person_seniority: { include: TARGET_SENIORITIES }
             }
           },
           timeoutMs: this.config.HTTP_TIMEOUT_MS,
