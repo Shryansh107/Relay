@@ -25,7 +25,7 @@ export class OceanIoClient implements CompanyDiscoveryClient {
   constructor(private readonly config: AppConfig) {}
 
   async findLookalikes(seedDomain: string): Promise<DiscoveredCompany[]> {
-    const url = new URL(this.config.OCEAN_IO_SEARCH_PATH, this.config.OCEAN_IO_BASE_URL);
+    const url = "https://api.ocean.io/v3/search/companies";
     const body = {
       size: Math.max(5, Math.min(50, this.config.MAX_SENDS_PER_RUN * 4)),
       companiesFilters: {
@@ -36,7 +36,7 @@ export class OceanIoClient implements CompanyDiscoveryClient {
     // Apply Ocean.io rate limiting (≈55 req/min)
     const oceanLimiter = new RateLimiter({ maxRequestsPerInterval: 55, intervalMs: 60_000 });
     await oceanLimiter.limit();
-    const response = await fetchJson<unknown>(url.toString(), {
+    const response = await fetchJson<unknown>(url, {
       method: "POST",
       headers: { "x-api-token": this.config.OCEAN_IO_API_KEY },
       body,

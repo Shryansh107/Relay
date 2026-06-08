@@ -16,8 +16,8 @@ export class BrevoClient implements EmailSendClient {
     email: { subject: string; body: string };
     tags: string[];
   }): Promise<{ messageId: string }> {
-    const url = new URL("/v3/smtp/email", this.config.BREVO_BASE_URL);
-    const response = await fetchJson<unknown>(url.toString(), {
+    const url = "https://api.brevo.com/v3/smtp/email";
+    const response = await fetchJson<unknown>(url, {
       method: "POST",
       headers: { "api-key": this.config.BREVO_API_KEY },
       body: {

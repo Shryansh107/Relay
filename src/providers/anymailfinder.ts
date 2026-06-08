@@ -30,13 +30,12 @@ export class AnymailFinderClient implements EmailVerificationClient {
       throw new Error("ANYMAIL_FINDER_API_KEY is not configured in environment variables.");
     }
 
-    const baseUrl = this.config.ANYMAIL_FINDER_BASE_URL || "https://api.anymailfinder.com";
-    const url = new URL("/v5.1/find-email/linkedin-url", baseUrl);
+    const url = "https://api.anymailfinder.com/v5.1/find-email/linkedin-url";
 
     // Apply AnyMailFinder rate limiting (≈4 req/s)
     const anymailLimiter = new RateLimiter({ maxRequestsPerInterval: 4, intervalMs: 1_000 });
     await anymailLimiter.limit();
-    const response = await fetchJson<AnymailFinderPersonResponse>(url.toString(), {
+    const response = await fetchJson<AnymailFinderPersonResponse>(url, {
       method: "POST",
       headers: {
         "Authorization": apiKey

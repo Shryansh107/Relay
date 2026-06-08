@@ -24,14 +24,14 @@ export class ProspeoClient implements ContactDiscoveryClient {
   constructor(private readonly config: AppConfig) {}
 
   async findDecisionMakers(companyId: string, domain: string): Promise<DiscoveredContact[]> {
-    const url = new URL("/search-person", this.config.PROSPEO_BASE_URL);
+    const url = "https://api.prospeo.io/search-person";
     // Apply Prospeo rate limiting (≈200 req/min) and retry on 429
     const prospeoLimiter = new RateLimiter({ maxRequestsPerInterval: 200, intervalMs: 60_000 });
     let response;
     for (let attempts = 3; attempts > 0; attempts--) {
       await prospeoLimiter.limit();
       try {
-        response = await fetchJson<unknown>(url.toString(), {
+        response = await fetchJson<unknown>(url, {
           method: "POST",
           headers: { "X-KEY": this.config.PROSPEO_API_KEY },
           body: {
