@@ -24,7 +24,7 @@ flowchart LR
 ---
 
 
-For a detailed overview of the system design, database schema, and API request/response specifications, refer to the [Architectural Breakdown](architectural_breakdown.md).
+For a detailed overview of the system design, database schema, and API request/response specifications, refer to the [Architectural Breakdown](architectural.md).
 
 ## Getting Started
 

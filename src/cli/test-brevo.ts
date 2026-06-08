@@ -5,7 +5,7 @@ import { BrevoClient } from "../providers/brevo.js";
 import { renderEmail } from "../templates/render.js";
 import { createLogger } from "../utils/logger.js";
 
-import { SIMULATION_RECIPIENT_EMAIL } from "../config/constants.js";
+import { SIMULATION_RECIPIENT_EMAIL } from "../config/constants.ts";
 
 const program = new Command();
 

@@ -21,7 +21,7 @@ const oceanCompanySchema = z.object({
     .default([])
 });
 
-import { RATE_LIMITS } from "../config/constants.js";
+import { RATE_LIMITS } from "../config/constants.ts";
 
 export class OceanIoClient implements CompanyDiscoveryClient {
   constructor(private readonly config: AppConfig) {}

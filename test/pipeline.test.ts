@@ -3,7 +3,7 @@ import { OutreachPipeline } from "../src/orchestrator/pipeline.js";
 import type { PrismaClient } from "@prisma/client";
 import type { AppConfig } from "../src/config/env.js";
 import pino from "pino";
-import { SIMULATION_RECIPIENT_EMAIL } from "../src/config/constants.js";
+import { SIMULATION_RECIPIENT_EMAIL } from "../src/config/constants.ts";
 
 const mockConfig: AppConfig = {
   DATABASE_URL: "file:./data/outreach.db",

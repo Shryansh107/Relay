@@ -14,7 +14,7 @@ import { sha256 } from "../utils/hash.js";
 import { normalizeDomain } from "../utils/normalize.js";
 import { Spinner } from "../utils/spinner.js";
 import readline from "readline/promises";
-import { SIMULATION_RECIPIENT_EMAIL } from "../config/constants.js";
+import { SIMULATION_RECIPIENT_EMAIL } from "../config/constants.ts";
 
 export type PipelineResult = StageSummary & {
   runId: string;

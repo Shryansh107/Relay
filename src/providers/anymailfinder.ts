@@ -4,7 +4,7 @@ import type { VerifiedEmail } from "../domain/types.js";
 import { fetchJson } from "../utils/http.js";
 import { normalizeEmail } from "../utils/normalize.js";
 import type { EmailVerificationClient } from "./types.js";
-import { RATE_LIMITS } from "../config/constants.js";
+import { RATE_LIMITS } from "../config/constants.ts";
 
 interface AnymailFinderPersonResponse {
   credits_charged: number;

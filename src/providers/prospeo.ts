@@ -4,7 +4,8 @@ import { RateLimiter } from "../utils/rateLimiter.js";
 import type { DiscoveredContact } from "../domain/types.js";
 import { fetchJson } from "../utils/http.js";
 import { normalizeLinkedInUrl, asString } from "../utils/normalize.js";
-import { TARGET_SENIORITIES, RATE_LIMITS } from "../config/constants.js";
+import { TARGET_SENIORITIES, RATE_LIMITS } from "../config/constants.ts";
+import { ContactDiscoveryClient } from "./types.js";
 
 const prospeoResponseSchema = z.object({
   error: z.boolean().optional(),
@@ -19,7 +20,7 @@ const prospeoResponseSchema = z.object({
 });
 
 export class ProspeoClient implements ContactDiscoveryClient {
-  constructor(private readonly config: AppConfig) {}
+  constructor(private readonly config: AppConfig) { }
 
   async findDecisionMakers(companyId: string, domain: string): Promise<DiscoveredContact[]> {
     const url = "https://api.prospeo.io/search-person";
