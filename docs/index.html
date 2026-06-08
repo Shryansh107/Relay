@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Relay is an automated TypeScript cold-outreach CLI that discovers lookalike companies, finds decision-makers, verifies emails, applies safety checks, and dispatches personalized outreach."
+    />
+    <title>Relay - Cold Outreach Pipeline</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="ambient" aria-hidden="true">
+      <span class="blob blob-primary"></span>
+      <span class="blob blob-secondary"></span>
+      <span class="blob blob-tertiary"></span>
+      <span class="grid-layer"></span>
+      <span class="noise-layer"></span>
+    </div>
+
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="Relay home">
+        <span class="brand-mark">R</span>
+        <span>Relay</span>
+      </a>
+
+      <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">
+        <span class="menu-line"></span>
+        <span class="menu-line"></span>
+        <span class="menu-line"></span>
+      </button>
+
+      <nav class="site-nav" id="site-nav" aria-label="Primary navigation">
+        <a href="#demo">Demo</a>
+        <a href="#pipeline">Pipeline</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#usage">Usage</a>
+        <a class="nav-cta" href="https://github.com/Shryansh107/outreach-assistant">GitHub</a>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="hero" data-parallax>
+        <div class="container hero-grid">
+          <div class="hero-copy reveal">
+            <p class="eyebrow">TypeScript CLI / Outreach Automation</p>
+            <h1>Relay turns one company domain into a controlled outreach run.</h1>
+            <p class="hero-lede">
+              A multi-stage cold-outreach pipeline that discovers lookalike companies, finds senior
+              decision-makers, verifies work emails, checks policy constraints, and sends personalized emails.
+            </p>
+            <div class="hero-actions">
+              <a class="button primary" href="#demo">Watch Demo</a>
+              <a class="button secondary" href="https://github.com/Shryansh107/outreach-assistant">View GitHub</a>
+            </div>
+          </div>
+
+          <aside class="terminal-card spotlight reveal" aria-label="Relay command summary">
+            <div class="terminal-bar">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+            <pre><code>$ npm run relay -- run stripe.com
+
+Discovering similar companies... done
+Discovering contacts... done
+Verifying email addresses... done
+Running safety gate... passed
+
+RELAY RUN SUMMARY
+Companies: 20 found
+Contacts: 42 found
+Emails: 14 verified
+Sent: 5 dry_run
+Skipped: 0</code></pre>
+          </aside>
+        </div>
+      </section>
+
+      <section class="section" id="demo">
+        <div class="container">
+          <div class="section-heading reveal">
+            <p class="eyebrow">Demo Video</p>
+            <h2>See the pipeline run from the command line.</h2>
+            <p>
+              The demo shows Relay accepting a seed domain, progressing through discovery and verification,
+              presenting a review step, and producing a run summary.
+            </p>
+          </div>
+
+          <div class="video-shell spotlight reveal">
+            <video controls preload="metadata" poster="">
+              <source src="assets/video.webm" type="video/webm" />
+              Your browser does not support the video tag.
+            </video>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="pipeline">
+        <div class="container">
+          <div class="section-heading reveal">
+            <p class="eyebrow">Pipeline Flow</p>
+            <h2>Five stages, one controlled campaign.</h2>
+          </div>
+
+          <div class="pipeline-grid">
+            <article class="stage-card spotlight reveal">
+              <span class="stage-index">01</span>
+              <h3>Company Discovery</h3>
+              <p>Ocean.io searches for lookalike companies based on the input company domain.</p>
+            </article>
+            <article class="stage-card spotlight reveal">
+              <span class="stage-index">02</span>
+              <h3>Decision-Makers</h3>
+              <p>Prospeo finds senior contacts such as founders, C-suite leaders, VPs, directors, and heads.</p>
+            </article>
+            <article class="stage-card spotlight reveal">
+              <span class="stage-index">03</span>
+              <h3>Email Verification</h3>
+              <p>Anymail Finder resolves and validates work emails from contact LinkedIn profiles.</p>
+            </article>
+            <article class="stage-card spotlight reveal">
+              <span class="stage-index">04</span>
+              <h3>Safety Gate</h3>
+              <p>The policy engine checks send caps, missing content, and recontact cooldown rules.</p>
+            </article>
+            <article class="stage-card stage-wide spotlight reveal">
+              <span class="stage-index">05</span>
+              <h3>Personalized Dispatch</h3>
+              <p>
+                Brevo sends the rendered Handlebars email in live mode, while dry-run mode records the
+                attempt and forwards one sample to the simulation inbox for inspection.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="architecture">
+        <div class="container">
+          <div class="section-heading reveal">
+            <p class="eyebrow">Architecture</p>
+            <h2>Built as a modular CLI with durable local state.</h2>
+            <p>
+              Relay separates command handling, orchestration, provider clients, safety policy, email rendering,
+              and database repositories so each stage stays testable and recoverable.
+            </p>
+          </div>
+
+          <div class="architecture-grid">
+            <article class="feature-card feature-large spotlight reveal">
+              <h3>Progress Recovery</h3>
+              <p>
+                Runs are stored in SQLite with stage checkpoints. If a run fails or is interrupted, Relay detects
+                saved companies, contacts, and emails, then resumes from the next incomplete stage.
+              </p>
+              <ul class="check-list">
+                <li>Run status and stage tracking</li>
+                <li>Provider logs for diagnostics</li>
+                <li>Summary JSON for final reporting</li>
+              </ul>
+            </article>
+
+            <article class="feature-card spotlight reveal">
+              <h3>Provider Boundary</h3>
+              <p>Dedicated clients handle Ocean.io, Prospeo, Anymail Finder, and Brevo requests.</p>
+            </article>
+
+            <article class="feature-card spotlight reveal">
+              <h3>Database Cache</h3>
+              <p>Previous completed runs can supply companies, contacts, and emails without repeat API calls.</p>
+            </article>
+
+            <article class="feature-card spotlight reveal">
+              <h3>Safety Policy</h3>
+              <p>Outbound candidates are filtered by send limits, cooldown windows, and template integrity.</p>
+            </article>
+
+            <article class="feature-card spotlight reveal">
+              <h3>Dry-Run Default</h3>
+              <p>Real sending requires `--live`; otherwise records are stored as simulated sends.</p>
+            </article>
+          </div>
+
+          <div class="code-map reveal">
+            <a href="https://github.com/Shryansh107/outreach-assistant/blob/main/src/cli/run.ts">src/cli/run.ts</a>
+            <a href="https://github.com/Shryansh107/outreach-assistant/blob/main/src/orchestrator/pipeline.ts">src/orchestrator/pipeline.ts</a>
+            <a href="https://github.com/Shryansh107/outreach-assistant/blob/main/src/safety/policy-engine.ts">src/safety/policy-engine.ts</a>
+            <a href="https://github.com/Shryansh107/outreach-assistant/blob/main/prisma/schema.prisma">prisma/schema.prisma</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="usage">
+        <div class="container">
+          <div class="section-heading reveal">
+            <p class="eyebrow">Usage</p>
+            <h2>Install, configure, run.</h2>
+          </div>
+
+          <div class="command-grid">
+            <article class="command-card spotlight reveal">
+              <div class="command-head">
+                <h3>Setup</h3>
+                <button class="copy-button" type="button" data-copy="npm install&#10;npm run prisma:generate&#10;npm run prisma:push">Copy</button>
+              </div>
+              <pre><code>npm install
+npm run prisma:generate
+npm run prisma:push</code></pre>
+            </article>
+
+            <article class="command-card spotlight reveal">
+              <div class="command-head">
+                <h3>Dry Run</h3>
+                <button class="copy-button" type="button" data-copy="npm run relay -- run stripe.com">Copy</button>
+              </div>
+              <pre><code>npm run relay -- run stripe.com</code></pre>
+            </article>
+
+            <article class="command-card spotlight reveal">
+              <div class="command-head">
+                <h3>Live Run</h3>
+                <button class="copy-button" type="button" data-copy="npm run relay -- run stripe.com --live --no-cache">Copy</button>
+              </div>
+              <pre><code>npm run relay -- run stripe.com --live --no-cache</code></pre>
+            </article>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-inner">
+        <p>Relay: automated cold-outreach pipeline.</p>
+        <div class="footer-links">
+          <a href="https://github.com/Shryansh107/outreach-assistant">GitHub</a>
+          <a href="https://github.com/Shryansh107/outreach-assistant/blob/main/README.md">README</a>
+          <a href="https://github.com/Shryansh107/outreach-assistant/blob/main/architectural.md">Architecture</a>
+          <a href="assets/video.webm">Video File</a>
+        </div>
+      </div>
+    </footer>
+
+    <script src="script.js"></script>
+  </body>
+</html>
