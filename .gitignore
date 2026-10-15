@@ -1,0 +1,84 @@
+# Dependencies
+node_modules/
+/jspm_packages/
+
+# Build outputs and compilation info
+/dist/
+/build/
+/out/
+*.tsbuildinfo
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Runtime data / local DB files
+data/
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
+# Secrets & Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.backup
+.env.old
+
+# Editor & IDE settings
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# Test coverage and cache directories
+coverage/
+.nyc_output/
+.vitest-cache/
+.eslintcache
+
+# PC restore source backup: generated dependencies, runtime data, and secrets
+node_modules/
+.venv/
+.venvs/
+venv/
+__pycache__/
+*.pyc
+dist/
+build/
+.next/
+.nuxt/
+.turbo/
+coverage/
+target/
+.cache/
+.local/
+.tmp/
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+*.sqlite*
+*.db
+*.db-wal
+*.db-shm
+*.log
+*.pem
+*.key
+*.pfx
+*.p12

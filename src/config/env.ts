@@ -1,0 +1,48 @@
+import "dotenv/config";
+import { z } from "zod";
+
+const booleanFromString = z
+  .string()
+  .default("true")
+  .transform((value) => value.toLowerCase() === "true");
+
+const intFromString = (fallback: string) =>
+  z
+    .string()
+    .default(fallback)
+    .transform((value, ctx) => {
+      const parsed = Number.parseInt(value, 10);
+      if (!Number.isFinite(parsed) || parsed < 0) {
+        ctx.addIssue({ code: "custom", message: `Expected non-negative integer, got ${value}` });
+        return z.NEVER;
+      }
+      return parsed;
+    });
+
+export const envSchema = z.object({
+  DATABASE_URL: z.string().default("file:./data/outreach.db"),
+  OCEAN_IO_API_KEY: z.string().min(1),
+  PROSPEO_API_KEY: z.string().min(1),
+  ANYMAIL_FINDER_API_KEY: z.string().min(1),
+  BREVO_API_KEY: z.string().min(1),
+  BREVO_SENDER_EMAIL: z.string().email(),
+  BREVO_SENDER_NAME: z.string().min(1).default("Outreach Team"),
+  MAX_SENDS_PER_RUN: intFromString("5"),
+  MAX_CONTACTS_PER_COMPANY: intFromString("3"),
+  PROSPEO_MAX_COMPANIES_LIMIT: intFromString("100"),
+  RECONTACT_COOLDOWN_DAYS: intFromString("30"),
+  DEFAULT_DRY_RUN: booleanFromString,
+  HTTP_TIMEOUT_MS: intFromString("20000"),
+  HTTP_RETRIES: intFromString("3")
+});
+
+export type AppConfig = z.infer<typeof envSchema>;
+
+export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
+  const parsed = envSchema.safeParse(source);
+  if (!parsed.success) {
+    const message = parsed.error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`).join("; ");
+    throw new Error(`Invalid environment: ${message}`);
+  }
+  return parsed.data;
+}
